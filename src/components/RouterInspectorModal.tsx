@@ -12,10 +12,10 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { NoCConfig, PortDirection, RouterBuffer, RouterNode } from '../types/noc';
+import { NoCConfig, PortDirection, SerializedRouterNode } from '@shared/types/noc';
 
 interface RouterInspectorModalProps {
-  router: RouterNode | null;
+  router: SerializedRouterNode | null;
   config: NoCConfig;
   onClose: () => void;
 }
@@ -40,17 +40,17 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
 
   let totalFlits = 0;
   if (buffers) {
-    buffers.forEach((buf) => {
+    Object.values(buffers).forEach((buf) => {
       totalFlits += buf?.flits?.length || 0;
     });
   }
   const maxCap = config.virtualChannels * config.bufferDepthPerVC * 5;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0c10]/80 backdrop-blur-sm">
-      <div className="bg-[#161b22] border border-[#30363d] rounded max-w-2xl w-full p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-[#c9d1d9]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--bg-canvas)]/80 backdrop-blur-sm">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded max-w-2xl w-full p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-[var(--text-primary)]">
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-[#30363d]">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border-subtle)]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded bg-emerald-500/20 border border-emerald-500/80 flex items-center justify-center text-emerald-300 font-bold font-mono text-xs">
               R({x},{y})
@@ -70,7 +70,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded bg-[#0d1117] text-slate-400 hover:text-white hover:bg-[#21262d] border border-[#30363d] transition-colors"
+            className="p-1 rounded bg-[var(--bg-inset)] text-slate-400 hover:text-white hover:bg-[#21262d] border border-[var(--border-subtle)] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -86,7 +86,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {directions.map((port) => {
               return (
-                <div key={port} className="bg-[#0d1117] p-2 rounded border border-[#30363d] space-y-1.5">
+                <div key={port} className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)] space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-mono">
                     <span className="font-semibold text-slate-200 flex items-center gap-1">
                       {dirIcons[port]} {port}
@@ -99,7 +99,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
                   {/* VC List */}
                   <div className="space-y-1">
                     {Array.from({ length: config.virtualChannels }).map((_, vcId) => {
-                      const buf = buffers?.get(`${port}_${vcId}`);
+                      const buf = buffers?.[`${port}_${vcId}`];
                       const flitCount = buf?.flits?.length || 0;
                       const isGated = buf?.isPowerGated;
 
@@ -108,8 +108,8 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
                           key={vcId}
                           className={`p-1 rounded text-[10px] font-mono flex items-center justify-between border ${
                             isGated
-                              ? 'bg-[#161b22]/50 border-[#30363d] text-slate-600'
-                              : 'bg-[#161b22] border-[#30363d] text-slate-300'
+                              ? 'bg-[var(--bg-surface)]/50 border-[var(--border-subtle)] text-slate-600'
+                              : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] text-slate-300'
                           }`}
                         >
                           <div className="flex items-center gap-1">
@@ -133,7 +133,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
                                   className={`w-2.5 h-2.5 rounded-sm border ${
                                     filled
                                       ? 'bg-emerald-500 border-emerald-400'
-                                      : 'bg-[#0d1117] border-[#30363d]'
+                                      : 'bg-[var(--bg-inset)] border-[var(--border-subtle)]'
                                   }`}
                                 />
                               );
@@ -153,18 +153,18 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
         </div>
 
         {/* 2. Energy & Telemetry */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#30363d] font-mono text-[10px]">
-          <div className="bg-[#0d1117] p-2 rounded border border-[#30363d]">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--border-subtle)] font-mono text-[10px]">
+          <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
             <div className="text-[9px] text-slate-500">Total Energy</div>
             <div className="text-xs font-bold text-white">
               {(energyPJ.bufferDynamic + energyPJ.crossbarDynamic + energyPJ.linkDynamic + energyPJ.staticLeakage).toFixed(2)} pJ
             </div>
           </div>
-          <div className="bg-[#0d1117] p-2 rounded border border-[#30363d]">
+          <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
             <div className="text-[9px] text-slate-500">Delivered Flits</div>
             <div className="text-xs font-bold text-emerald-400">{router.totalDelivered}</div>
           </div>
-          <div className="bg-[#0d1117] p-2 rounded border border-[#30363d]">
+          <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
             <div className="text-[9px] text-slate-500">Temp Rise</div>
             <div className="text-xs font-bold text-amber-400">
               {(router.temperatureRelative * 100).toFixed(0)}&deg;C

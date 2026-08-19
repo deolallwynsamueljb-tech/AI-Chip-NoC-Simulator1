@@ -1,4 +1,4 @@
-import { NoCConfig } from '../types/noc';
+import { NoCConfig } from '@shared/types/noc';
 
 export class CodeGenerator {
   /**

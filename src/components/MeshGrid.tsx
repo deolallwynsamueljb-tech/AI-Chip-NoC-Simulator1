@@ -11,10 +11,10 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { Link, NoCConfig, RouterBuffer, RouterNode } from '../types/noc';
+import { Link, NoCConfig, SerializedRouterNode } from '@shared/types/noc';
 
 interface MeshGridProps {
-  routers: Map<number, RouterNode>;
+  routers: Map<number, SerializedRouterNode>;
   links: Link[];
   config: NoCConfig;
   selectedRouterId: number | null;
@@ -34,9 +34,9 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
   const { meshWidth, meshHeight } = config;
 
   // Helper for color coding tile based on heatmap
-  const getTileStyle = (router: RouterNode, occupancyPct: number) => {
+  const getTileStyle = (router: SerializedRouterNode, occupancyPct: number) => {
     if (heatmapMode === 'OCCUPANCY') {
-      if (occupancyPct < 5) return 'bg-[#0d1117] border-[#30363d] text-slate-500';
+      if (occupancyPct < 5) return 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-slate-500';
       if (occupancyPct < 25) return 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300';
       if (occupancyPct < 50) return 'bg-emerald-700/50 border-emerald-500/60 text-emerald-100';
       if (occupancyPct < 75) return 'bg-yellow-900/60 border-yellow-500/60 text-yellow-200';
@@ -76,9 +76,9 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
   };
 
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded p-4 shadow-sm flex flex-col h-full text-[#c9d1d9]">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded p-4 shadow-sm flex flex-col h-full text-[var(--text-primary)]">
       {/* Visualizer Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#30363d] mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border-subtle)] mb-4">
         <div>
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-emerald-400" />
@@ -92,7 +92,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
         </div>
 
         {/* Heatmap Mode Selector */}
-        <div className="flex items-center gap-1 bg-[#0d1117] p-1 rounded border border-[#30363d] text-[10px] font-mono">
+        <div className="flex items-center gap-1 bg-[var(--bg-inset)] p-1 rounded border border-[var(--border-subtle)] text-[10px] font-mono">
           <button
             onClick={() => setHeatmapMode('OCCUPANCY')}
             className={`px-2 py-0.5 rounded transition-colors ${
@@ -127,9 +127,9 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
       </div>
 
       {/* 2D Mesh Canvas & Grid */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 bg-[#010409] rounded border border-[#30363d]">
+      <div className="flex-1 flex flex-col items-center justify-center p-3 bg-[var(--bg-deep)] rounded border border-[var(--border-subtle)]">
         <div
-          className="grid gap-2 p-3 bg-[#161b22] border border-[#30363d] rounded shadow-2xl"
+          className="grid gap-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-2xl"
           style={{
             gridTemplateColumns: `repeat(${meshWidth}, minmax(0, 1fr))`,
           }}
@@ -143,7 +143,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
               const isSelected = selectedRouterId === id;
               let totalFlits = 0;
               if (router.buffers) {
-                router.buffers.forEach((buf) => {
+                Object.values(router.buffers).forEach((buf) => {
                   totalFlits += buf?.flits?.length || 0;
                 });
               }
@@ -169,14 +169,14 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   onClick={() => onSelectRouter(id)}
                   className={`relative p-2 rounded cursor-pointer border transition-all duration-200 select-none flex flex-col justify-between w-20 h-20 sm:w-24 sm:h-24 ${tileClasses} ${
                     isSelected
-                      ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-[#0a0c10]'
+                      ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-[var(--bg-canvas)]'
                       : 'hover:brightness-125'
                   }`}
                 >
                   {/* Top Tile Coordinates and Mode */}
                   <div className="flex items-center justify-between text-[9px] font-mono font-bold leading-tight">
                     <span>R({x},{y})</span>
-                    <span className="text-[8px] px-1 py-0.2 rounded bg-black/40 border border-[#30363d] uppercase">
+                    <span className="text-[8px] px-1 py-0.2 rounded bg-black/40 border border-[var(--border-subtle)] uppercase">
                       {modeTag}
                     </span>
                   </div>
@@ -186,7 +186,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                     <div className="text-xs font-mono font-bold text-white">
                       {totalFlits} <span className="text-[8px] font-normal text-slate-400">flits</span>
                     </div>
-                    <div className="w-full bg-[#0d1117] h-1 rounded-full overflow-hidden mt-1 border border-[#30363d]">
+                    <div className="w-full bg-[var(--bg-inset)] h-1 rounded-full overflow-hidden mt-1 border border-[var(--border-subtle)]">
                       <div
                         className={`h-full transition-all duration-300 ${
                           occupancyPct > 60
@@ -201,7 +201,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   </div>
 
                   {/* Bottom Stats: Total Injected/Delivered */}
-                  <div className="flex items-center justify-between text-[8px] text-slate-400 pt-1 border-t border-[#30363d]/80 font-mono">
+                  <div className="flex items-center justify-between text-[8px] text-slate-400 pt-1 border-t border-[var(--border-subtle)]/80 font-mono">
                     <span>Tx:{router.totalInjected}</span>
                     <span>Rx:{router.totalDelivered}</span>
                   </div>
@@ -218,11 +218,11 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
       </div>
 
       {/* Legend & Summary Info */}
-      <div className="mt-3 pt-2.5 border-t border-[#30363d] flex flex-wrap items-center justify-between gap-3 text-[9px] font-mono text-slate-400">
+      <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-[9px] font-mono text-slate-400">
         <div className="flex items-center gap-3">
           <span className="font-bold text-slate-300 uppercase">LOAD SCALE:</span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-[#0d1117] border border-[#30363d] rounded-sm"></span> IDLE
+            <span className="w-2 h-2 bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded-sm"></span> IDLE
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 bg-emerald-950 border border-emerald-500/40 rounded-sm"></span> LOW

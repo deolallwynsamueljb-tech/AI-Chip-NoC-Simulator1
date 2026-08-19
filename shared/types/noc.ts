@@ -181,3 +181,46 @@ export interface BenchmarkComparisonData {
     PROPOSED_RECONFIGURABLE: SweepPoint[];
   };
 }
+
+export interface WorkloadSensitivityItem {
+  workload: string;
+  workloadId: WorkloadType;
+  desc: string;
+  baselineXY: SweepPoint;
+  adaptive: SweepPoint;
+  congestionAware: SweepPoint;
+  proposed: SweepPoint;
+  latencyReductionPct: number;
+  throughputGainPct: number;
+  edpImprovementPct: number;
+}
+
+/**
+ * Wire-format router: `buffers` travels as a plain object keyed by
+ * `${port}_${vc}` instead of a Map, since Maps don't survive JSON.
+ */
+export type SerializedRouterBuffers = Record<string, RouterBuffer>;
+
+export interface SerializedRouterNode extends Omit<RouterNode, 'buffers'> {
+  buffers: SerializedRouterBuffers;
+}
+
+export interface SimulationSnapshot {
+  metrics: SimulationMetrics;
+  telemetry: WorkloadTelemetry;
+  routers: SerializedRouterNode[];
+  links: Link[];
+  config: NoCConfig;
+}
+
+export type ClientCommand =
+  | { type: 'play' }
+  | { type: 'pause' }
+  | { type: 'step'; cycles: number }
+  | { type: 'reset' }
+  | { type: 'setSpeed'; speed: number }
+  | { type: 'updateConfig'; config: Partial<NoCConfig> };
+
+export type ServerMessage =
+  | { type: 'snapshot'; isRunning: boolean; speed: number; snapshot: SimulationSnapshot }
+  | { type: 'error'; message: string };

@@ -1,4 +1,4 @@
-import { NoCConfig } from '../types/noc';
+import { NoCConfig } from '../../../shared/types/noc';
 
 /**
  * Standard Network-on-Chip Energy & Power Model (Derived from Orion 3.0 & DSENT)

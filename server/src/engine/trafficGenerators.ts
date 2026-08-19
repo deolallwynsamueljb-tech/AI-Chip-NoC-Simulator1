@@ -1,4 +1,4 @@
-import { NoCConfig, WorkloadType } from '../types/noc';
+import { NoCConfig, WorkloadType } from '../../../shared/types/noc';
 
 export interface TrafficTarget {
   dstX: number;

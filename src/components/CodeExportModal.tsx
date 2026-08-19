@@ -9,7 +9,7 @@ import {
   Terminal,
   X,
 } from 'lucide-react';
-import { NoCConfig } from '../types/noc';
+import { NoCConfig } from '@shared/types/noc';
 import { CodeGenerator } from '../utils/codeGenerator';
 
 interface CodeExportModalProps {
@@ -73,10 +73,10 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0c10]/80 backdrop-blur-sm">
-      <div className="bg-[#161b22] border border-[#30363d] rounded max-w-4xl w-full p-4 shadow-2xl space-y-3 max-h-[90vh] flex flex-col text-[#c9d1d9]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--bg-canvas)]/80 backdrop-blur-sm">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded max-w-4xl w-full p-4 shadow-2xl space-y-3 max-h-[90vh] flex flex-col text-[var(--text-primary)]">
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-[#30363d]">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border-subtle)]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded bg-emerald-500/20 border border-emerald-500/80 flex items-center justify-center text-emerald-400">
               <Code2 className="w-4 h-4" />
@@ -93,7 +93,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded bg-[#0d1117] text-slate-400 hover:text-white hover:bg-[#21262d] border border-[#30363d] transition-colors"
+            className="p-1 rounded bg-[var(--bg-inset)] text-slate-400 hover:text-white hover:bg-[#21262d] border border-[var(--border-subtle)] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,7 +101,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
 
         {/* Tab selector & actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex bg-[#0d1117] p-0.5 rounded border border-[#30363d] text-[10px] font-mono">
+          <div className="flex bg-[var(--bg-inset)] p-0.5 rounded border border-[var(--border-subtle)] text-[10px] font-mono">
             <button
               onClick={() => setSelectedFile('PROPOSED_PY')}
               className={`px-2.5 py-1 rounded font-semibold flex items-center gap-1.5 transition-colors ${
@@ -140,7 +140,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleCopy}
-              className="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-[#21262d] text-slate-200 text-[10px] font-mono border border-[#30363d] flex items-center gap-1"
+              className="px-2.5 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-slate-200 text-[10px] font-mono border border-[var(--border-subtle)] flex items-center gap-1"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               {copied ? 'Copied' : 'Copy'}
@@ -156,7 +156,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
         </div>
 
         {/* Code Viewer */}
-        <div className="flex-1 overflow-auto bg-[#010409] p-3 rounded border border-[#30363d] text-[10px] font-mono text-slate-300 leading-relaxed max-h-[460px]">
+        <div className="flex-1 overflow-auto bg-[var(--bg-deep)] p-3 rounded border border-[var(--border-subtle)] text-[10px] font-mono text-slate-300 leading-relaxed max-h-[460px]">
           <pre className="whitespace-pre">{getActiveCode()}</pre>
         </div>
       </div>

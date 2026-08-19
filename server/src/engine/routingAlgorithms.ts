@@ -1,4 +1,4 @@
-import { Flit, NoCConfig, PortDirection, RouterNode, RoutingMode } from '../types/noc';
+import { Flit, NoCConfig, PortDirection, RouterNode, RoutingMode } from '../../../shared/types/noc';
 
 export interface RouteDecision {
   nextPort: PortDirection;

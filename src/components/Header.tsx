@@ -12,7 +12,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { NoCConfig, RoutingMode, WorkloadType } from '../types/noc';
+import { NoCConfig, RoutingMode, WorkloadType } from '@shared/types/noc';
 
 interface HeaderProps {
   config: NoCConfig;
@@ -20,6 +20,7 @@ interface HeaderProps {
   simSpeed: number;
   currentCycle: number;
   activeTab: 'simulator' | 'benchmarks' | 'matrix' | 'research';
+  connected: boolean;
   onTogglePlay: () => void;
   onStepCycle: (cycles: number) => void;
   onReset: () => void;
@@ -36,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   simSpeed,
   currentCycle,
   activeTab,
+  connected,
   onTogglePlay,
   onStepCycle,
   onReset,
@@ -46,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRunSweep,
 }) => {
   return (
-    <header className="border-b border-[#30363d] bg-[#161b22] sticky top-0 z-40 shadow-sm text-[#c9d1d9]">
+    <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 shadow-sm text-[var(--text-primary)]">
       {/* Top Main Title & Metadata Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5">
@@ -57,18 +59,15 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xs font-bold tracking-tight text-white uppercase font-mono">
-                  Adaptive AI-NoC Framework
+                <h1 className="text-sm font-semibold tracking-tight text-white">
+                  Adaptive AI-NoC
                 </h1>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 rounded">
-                  v2.4-RECONFIG
-                </span>
-                <span className="text-[10px] font-mono text-slate-400 bg-[#0d1117] border border-[#30363d] px-1.5 py-0.2 rounded">
-                  MESH_{config.meshWidth}X{config.meshHeight}
+                <span className="text-[10px] font-mono text-slate-400 bg-[var(--bg-inset)] border border-[var(--border-subtle)] px-1.5 py-0.2 rounded">
+                  {config.meshWidth}&times;{config.meshHeight} mesh
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-mono tracking-tight">
-                SYSTEM ARCHITECTURE: SELF-RECONFIGURABLE RUNTIME CONTROLLER &bull; BASELINE-1 XY
+              <p className="text-[11px] text-slate-500">
+                Self-reconfigurable runtime routing controller
               </p>
             </div>
           </div>
@@ -77,18 +76,18 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
             {/* Telemetry quick badges */}
             <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono mr-2">
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                <span className="text-[10px] uppercase font-bold text-slate-300">
-                  {isRunning ? 'RUNNING: ACTIVE_SIM' : 'PAUSED: STANDBY'}
+              <div className="flex items-center gap-1.5 text-slate-300" title={connected ? 'Connected to simulation server' : 'Disconnected from simulation server'}>
+                <span className={`w-2 h-2 rounded-full ${connected ? (isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500') : 'bg-red-500'}`}></span>
+                <span className="text-[10px] font-medium text-slate-400">
+                  {!connected ? 'Reconnecting…' : isRunning ? 'Running' : 'Paused'}
                 </span>
               </div>
-              <div className="bg-[#0d1117] px-2 py-0.5 rounded border border-[#30363d] text-[10px] text-emerald-400">
-                {config.injectionRate.toFixed(2)} INJ RATE
+              <div className="bg-[var(--bg-inset)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-emerald-400">
+                {config.injectionRate.toFixed(2)} inj/cycle
               </div>
             </div>
 
-            <nav className="flex bg-[#0d1117] p-0.5 rounded border border-[#30363d]">
+            <nav className="flex bg-[var(--bg-inset)] p-0.5 rounded border border-[var(--border-subtle)]">
               <button
                 id="tab-simulator"
                 onClick={() => onSetActiveTab('simulator')}
@@ -142,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-export-code"
               onClick={onOpenCodeExport}
-              className="px-2.5 py-1 text-[11px] font-semibold rounded bg-[#0d1117] hover:bg-[#21262d] text-[#c9d1d9] border border-[#30363d] flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1 text-[11px] font-semibold rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1.5 transition-colors"
               title="Export Python & Verilog RTL"
             >
               <Code2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -161,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Bottom Simulation Sub-bar */}
-        <div className="mt-2.5 pt-2 border-t border-[#30363d]/80 flex flex-wrap items-center justify-between gap-2.5 text-xs font-mono">
+        <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)]/80 flex flex-wrap items-center justify-between gap-2.5 text-xs font-mono">
           {/* Controls */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
@@ -174,14 +173,14 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              {isRunning ? 'HALT SIM' : 'RESUME SIM'}
+              {isRunning ? 'Pause' : 'Resume'}
             </button>
 
             <button
               id="btn-step-1"
               onClick={() => onStepCycle(1)}
               disabled={isRunning}
-              className="px-2 py-1 rounded bg-[#0d1117] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[#30363d] flex items-center gap-1 text-[11px]"
+              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[11px]"
             >
               <StepForward className="w-3 h-3" />
               +1c
@@ -191,7 +190,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="btn-step-25"
               onClick={() => onStepCycle(config.epochCycles)}
               disabled={isRunning}
-              className="px-2 py-1 rounded bg-[#0d1117] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[#30363d] flex items-center gap-1 text-[11px]"
+              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[11px]"
             >
               <FastForward className="w-3 h-3" />
               +{config.epochCycles}c
@@ -200,15 +199,15 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-reset-sim"
               onClick={onReset}
-              className="p-1 rounded bg-[#0d1117] hover:bg-[#21262d] text-slate-400 hover:text-slate-200 border border-[#30363d]"
+              className="p-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-slate-400 hover:text-slate-200 border border-[var(--border-subtle)]"
               title="Reset Simulation"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             {/* Sim Speed selector */}
-            <div className="flex items-center gap-1 bg-[#0d1117] px-1.5 py-0.5 rounded border border-[#30363d]">
-              <span className="text-[10px] text-slate-500 font-bold">SPD:</span>
+            <div className="flex items-center gap-1 bg-[var(--bg-inset)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+              <span className="text-[10px] text-slate-500 font-bold">Speed</span>
               {[1, 5, 20, 50].map((spd) => (
                 <button
                   key={spd}
@@ -229,12 +228,12 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center flex-wrap gap-2">
             {/* Workload */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-bold uppercase">WORKLOAD:</span>
+              <span className="text-[10px] text-slate-500 font-medium">Workload</span>
               <select
                 id="select-workload"
                 value={config.workloadType}
                 onChange={(e) => onUpdateConfig({ workloadType: e.target.value as WorkloadType })}
-                className="bg-[#0d1117] border border-[#30363d] text-slate-200 text-[11px] font-mono rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
+                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-slate-200 text-[11px] font-mono rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
               >
                 <option value="CNN_LOCAL">CNN_LOCAL (High Spatial Locality)</option>
                 <option value="TRANSFORMER_GLOBAL">TRANSFORMER_GLOBAL (All-to-All)</option>
@@ -247,12 +246,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Routing Mode */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-bold uppercase">ROUTING:</span>
+              <span className="text-[10px] text-slate-500 font-medium">Routing</span>
               <select
                 id="select-routing-mode"
                 value={config.routingMode}
                 onChange={(e) => onUpdateConfig({ routingMode: e.target.value as RoutingMode })}
-                className="bg-[#0d1117] border border-[#30363d] text-emerald-400 text-[11px] font-mono font-bold rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
+                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-emerald-400 text-[11px] font-mono font-bold rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
               >
                 <option value="PROPOSED_RECONFIGURABLE">&#9733; Proposed: Self-Reconfigurable</option>
                 <option value="BASELINE_XY">Baseline-1: XY Routing</option>
@@ -263,8 +262,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Current Cycle Pill */}
-            <div className="bg-[#010409] px-2 py-0.5 rounded border border-[#30363d] font-mono text-[11px] text-emerald-400">
-              CYCLE: <span className="font-bold text-white">{currentCycle}</span>
+            <div className="bg-[var(--bg-deep)] px-2 py-0.5 rounded border border-[var(--border-subtle)] font-mono text-[11px] text-emerald-400">
+              Cycle <span className="font-bold text-white">{currentCycle}</span>
             </div>
           </div>
         </div>

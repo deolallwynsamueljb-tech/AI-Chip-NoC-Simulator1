@@ -37,8 +37,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex items-center justify-center p-6 font-mono">
-          <div className="bg-[#161b22] border border-red-500/50 rounded-lg p-6 max-w-xl w-full space-y-4 shadow-2xl">
+        <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] flex items-center justify-center p-6 font-mono">
+          <div className="bg-[var(--bg-surface)] border border-red-500/50 rounded-lg p-6 max-w-xl w-full space-y-4 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded bg-red-500/20 text-red-400">
                 <AlertTriangle className="w-6 h-6" />
@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
             </div>
 
-            <div className="bg-[#010409] p-3 rounded border border-[#30363d] text-xs text-red-300 overflow-x-auto">
+            <div className="bg-[var(--bg-deep)] p-3 rounded border border-[var(--border-subtle)] text-xs text-red-300 overflow-x-auto">
               <p className="font-bold">{this.state.error?.toString()}</p>
               {this.state.errorInfo && (
                 <pre className="mt-2 text-[10px] text-slate-500 whitespace-pre-wrap">

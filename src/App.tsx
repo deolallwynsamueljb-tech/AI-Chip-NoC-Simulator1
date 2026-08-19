@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { NoCConfig, RoutingMode, WorkloadType, SimulationMetrics, WorkloadTelemetry, BenchmarkComparisonData, RouterNode, Link } from './types/noc';
-import { NoCSimulator } from './engine/nocEngine';
-import { SweepEngine } from './engine/sweepEngine';
-import { getInitialBenchmarkData, getInitialWorkloadSensitivity } from './engine/sweepDefaults';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  NoCConfig,
+  BenchmarkComparisonData,
+  WorkloadSensitivityItem,
+} from '@shared/types/noc';
+import { createSession, runSensitivitySweep, runSweep } from './api/client';
+import { useSimulationSocket } from './api/useSimulationSocket';
 import { Header } from './components/Header';
 import { ArchitectureDiagram } from './components/ArchitectureDiagram';
 import { MeshGrid } from './components/MeshGrid';
@@ -13,6 +16,7 @@ import { ComparisonTable } from './components/ComparisonTable';
 import { RouterInspectorModal } from './components/RouterInspectorModal';
 import { CodeExportModal } from './components/CodeExportModal';
 import { ResearchOverview } from './components/ResearchOverview';
+import { AssistantPanel } from './components/AssistantPanel';
 
 const DEFAULT_CONFIG: NoCConfig = {
   meshWidth: 4,
@@ -30,93 +34,101 @@ const DEFAULT_CONFIG: NoCConfig = {
   powerGatingThreshold: 8,
 };
 
+type Tab = 'simulator' | 'benchmarks' | 'matrix' | 'research';
+
 export default function App() {
   const [config, setConfig] = useState<NoCConfig>(DEFAULT_CONFIG);
-  const [isRunning, setIsRunning] = useState<boolean>(true);
-  const [simSpeed, setSimSpeed] = useState<number>(5); // steps per frame
-  const [activeTab, setActiveTab] = useState<'simulator' | 'benchmarks' | 'matrix' | 'research'>('simulator');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('simulator');
   const [selectedRouterId, setSelectedRouterId] = useState<number | null>(null);
   const [isCodeExportOpen, setIsCodeExportOpen] = useState<boolean>(false);
 
-  // Simulator Instance
-  const simRef = useRef<NoCSimulator>(new NoCSimulator(DEFAULT_CONFIG));
+  // Benchmark data is only ever real: null until a sweep actually runs on the server.
+  const [benchmarkData, setBenchmarkData] = useState<BenchmarkComparisonData | null>(null);
+  const [workloadSensitivity, setWorkloadSensitivity] = useState<WorkloadSensitivityItem[] | null>(null);
+  const [isSweeping, setIsSweeping] = useState(false);
+  const [sweepError, setSweepError] = useState<string | null>(null);
 
-  // Reactive UI states
-  const [metrics, setMetrics] = useState<SimulationMetrics>(() => simRef.current.getMetrics());
-  const [telemetry, setTelemetry] = useState<WorkloadTelemetry>(() => simRef.current.getTelemetry());
-  const [routers, setRouters] = useState<Map<number, RouterNode>>(() => new Map(simRef.current.getRouters()));
-  const [links, setLinks] = useState<Link[]>(() => [...simRef.current.getLinks()]);
+  const {
+    connected,
+    isRunning,
+    speed,
+    metrics,
+    telemetry,
+    routers,
+    links,
+    play,
+    pause,
+    step,
+    reset,
+    setSpeed,
+    updateConfig: sendConfigUpdate,
+  } = useSimulationSocket(sessionId);
 
-  // Benchmark sweep cache
-  const [benchmarkData, setBenchmarkData] = useState<BenchmarkComparisonData>(() =>
-    getInitialBenchmarkData(DEFAULT_CONFIG)
-  );
-  const [workloadSensitivity, setWorkloadSensitivity] = useState(() =>
-    getInitialWorkloadSensitivity(DEFAULT_CONFIG)
-  );
-
-  // Refresh reactive state from simulator
-  const syncSimulatorState = useCallback(() => {
-    const sim = simRef.current;
-    setMetrics(sim.getMetrics());
-    setTelemetry(sim.getTelemetry());
-    setRouters(new Map(sim.getRouters()));
-    setLinks([...sim.getLinks()]);
+  // Bootstrap: create a real server-side simulation session once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    createSession(DEFAULT_CONFIG)
+      .then(({ sessionId: id }) => {
+        if (!cancelled) setSessionId(id);
+      })
+      .catch((err) => {
+        if (!cancelled) setBootError(err instanceof Error ? err.message : 'Failed to start simulation session');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Step simulation by N cycles
-  const handleStepCycle = useCallback((cycles: number) => {
-    simRef.current.stepCycles(cycles);
-    syncSimulatorState();
-  }, [syncSimulatorState]);
+  const handleStepCycle = useCallback((cycles: number) => step(cycles), [step]);
+  const handleReset = useCallback(() => reset(), [reset]);
+  const handleTogglePlay = useCallback(() => (isRunning ? pause() : play()), [isRunning, pause, play]);
 
-  // Reset simulation
-  const handleReset = useCallback(() => {
-    simRef.current.reset(config);
-    syncSimulatorState();
-  }, [config, syncSimulatorState]);
+  const handleUpdateConfig = useCallback(
+    (partial: Partial<NoCConfig>) => {
+      setConfig((prev) => ({ ...prev, ...partial }));
+      sendConfigUpdate(partial);
+    },
+    [sendConfigUpdate]
+  );
 
-  // Update Config
-  const handleUpdateConfig = useCallback((partial: Partial<NoCConfig>) => {
-    setConfig((prev) => {
-      const next = { ...prev, ...partial };
-      simRef.current.updateConfig(next);
-      syncSimulatorState();
-      return next;
-    });
-  }, [syncSimulatorState]);
-
-  // Run full sweep
   const handleRunSweep = useCallback(() => {
-    const res = SweepEngine.runMultiModeSweep(config);
-    const sens = SweepEngine.getWorkloadSensitivityMatrix(config);
-    setBenchmarkData(res);
-    setWorkloadSensitivity(sens);
+    setIsSweeping(true);
+    setSweepError(null);
     setActiveTab('benchmarks');
+
+    Promise.all([runSweep(config), runSensitivitySweep(config)])
+      .then(([sweepData, sensitivity]) => {
+        setBenchmarkData(sweepData);
+        setWorkloadSensitivity(sensitivity.items);
+      })
+      .catch((err) => {
+        setSweepError(err instanceof Error ? err.message : 'Sweep failed');
+      })
+      .finally(() => setIsSweeping(false));
   }, [config]);
 
-  // Animation Frame Loop
-  useEffect(() => {
-    let animationId: number;
-    let lastTime = performance.now();
-
-    const loop = (currentTime: number) => {
-      if (isRunning) {
-        const delta = currentTime - lastTime;
-        if (delta >= 30) {
-          simRef.current.stepCycles(simSpeed);
-          syncSimulatorState();
-          lastTime = currentTime;
-        }
-      }
-      animationId = requestAnimationFrame(loop);
-    };
-
-    animationId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animationId);
-  }, [isRunning, simSpeed, syncSimulatorState]);
-
   const selectedRouter = selectedRouterId !== null ? routers.get(selectedRouterId) || null : null;
+
+  if (bootError) {
+    return (
+      <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex items-center justify-center p-6 font-mono text-sm">
+        <div className="max-w-md text-center space-y-2">
+          <p className="text-red-400 font-bold">Could not reach the simulation server</p>
+          <p className="text-slate-400">{bootError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sessionId || !metrics || !telemetry) {
+    return (
+      <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex items-center justify-center p-6 font-mono text-sm">
+        Starting simulation session…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
@@ -124,13 +136,14 @@ export default function App() {
       <Header
         config={config}
         isRunning={isRunning}
-        simSpeed={simSpeed}
+        simSpeed={speed}
         currentCycle={metrics.currentCycle}
         activeTab={activeTab}
-        onTogglePlay={() => setIsRunning(!isRunning)}
+        connected={connected}
+        onTogglePlay={handleTogglePlay}
         onStepCycle={handleStepCycle}
         onReset={handleReset}
-        onChangeSpeed={setSimSpeed}
+        onChangeSpeed={setSpeed}
         onUpdateConfig={handleUpdateConfig}
         onSetActiveTab={setActiveTab}
         onOpenCodeExport={() => setIsCodeExportOpen(true)}
@@ -167,11 +180,7 @@ export default function App() {
 
               {/* Right Column: Workload Analyzer & Controller Telemetry */}
               <div className="lg:col-span-5 h-full">
-                <WorkloadControllerPanel
-                  telemetry={telemetry}
-                  config={config}
-                  routers={routers}
-                />
+                <WorkloadControllerPanel telemetry={telemetry} config={config} routers={routers} />
               </div>
             </div>
 
@@ -188,6 +197,8 @@ export default function App() {
               config={config}
               onRunNewSweep={handleRunSweep}
               workloadSensitivity={workloadSensitivity}
+              isSweeping={isSweeping}
+              sweepError={sweepError}
             />
             <ComparisonTable benchmarkData={benchmarkData} config={config} />
           </div>
@@ -202,36 +213,32 @@ export default function App() {
               config={config}
               onRunNewSweep={handleRunSweep}
               workloadSensitivity={workloadSensitivity}
+              isSweeping={isSweeping}
+              sweepError={sweepError}
             />
           </div>
         )}
 
         {/* Tab 4: Research Novelty & Thesis */}
-        {activeTab === 'research' && (
-          <ResearchOverview />
-        )}
+        {activeTab === 'research' && <ResearchOverview />}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-[#30363d] bg-[#0d1117] py-3 text-center text-[10px] font-mono text-slate-500">
-        AI Workload-Aware Self-Reconfigurable Mesh Network-on-Chip (NoC) Architecture Platform &bull; Baseline-1 XY Evaluation &bull; Cycle-Accurate Simulator
+        AI Workload-Aware Self-Reconfigurable Mesh Network-on-Chip (NoC) Architecture Platform &bull; Baseline-1 XY
+        Evaluation &bull; Server-Computed Cycle-Accurate Simulator
       </footer>
 
       {/* Router Inspector Modal */}
       {selectedRouter && (
-        <RouterInspectorModal
-          router={selectedRouter}
-          config={config}
-          onClose={() => setSelectedRouterId(null)}
-        />
+        <RouterInspectorModal router={selectedRouter} config={config} onClose={() => setSelectedRouterId(null)} />
       )}
 
       {/* Python / Verilog Code Export Modal */}
-      <CodeExportModal
-        config={config}
-        isOpen={isCodeExportOpen}
-        onClose={() => setIsCodeExportOpen(false)}
-      />
+      <CodeExportModal config={config} isOpen={isCodeExportOpen} onClose={() => setIsCodeExportOpen(false)} />
+
+      {/* AI Assistant (Groq-backed, grounded in live simulation state) */}
+      <AssistantPanel config={config} metrics={metrics} telemetry={telemetry} />
     </div>
   );
 }

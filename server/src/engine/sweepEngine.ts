@@ -1,4 +1,4 @@
-import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc';
+import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../../../shared/types/noc';
 import { NoCSimulator } from './nocEngine';
 
 export class SweepEngine {
@@ -10,7 +10,7 @@ export class SweepEngine {
   public static runMultiModeSweep(
     baseConfig: NoCConfig,
     injectionRates: number[] = SweepEngine.DEFAULT_RATES,
-    cyclesPerPoint: number = 300
+    cyclesPerPoint: number = 500
   ): BenchmarkComparisonData {
     const algorithms: RoutingMode[] = [
       'BASELINE_XY',
@@ -48,7 +48,7 @@ export class SweepEngine {
     baseConfig: NoCConfig,
     mode: RoutingMode,
     injectionRate: number,
-    warmupAndMeasureCycles: number = 300
+    warmupAndMeasureCycles: number = 600
   ): SweepPoint {
     const config: NoCConfig = {
       ...baseConfig,
@@ -57,29 +57,24 @@ export class SweepEngine {
     };
 
     const sim = new NoCSimulator(config);
-    // Warmup
-    sim.stepCycles(60);
+    // Warmup: let the network reach steady state before measuring
+    sim.stepCycles(150);
     // Measure
     sim.stepCycles(warmupAndMeasureCycles);
 
     const m = sim.getMetrics();
 
-    // Guard against 0 delivered packets in cold start
-    const avgLatency = m.averagePacketLatency > 0 ? m.averagePacketLatency : 4.5 + injectionRate * 12;
-    const maxLatency = m.maxPacketLatency > 0 ? m.maxPacketLatency : avgLatency * 2.4;
-    const p99Latency = m.tailLatencyP99 > 0 ? m.tailLatencyP99 : avgLatency * 1.9;
-    const throughput = m.throughputFlitsPerNodeCycle > 0 ? m.throughputFlitsPerNodeCycle : injectionRate * 0.92;
-    const energyPerFlit = m.energyPerFlitPJ > 0 ? m.energyPerFlitPJ : 1.8 + injectionRate * 0.5;
-
+    // Real measured values only - a genuinely empty run (e.g. near-zero
+    // injection rate) reports honest zeros rather than an invented curve.
     return {
       injectionRate,
-      avgLatency: Number(avgLatency.toFixed(2)),
-      maxLatency: Number(maxLatency.toFixed(2)),
-      tailLatencyP99: Number(p99Latency.toFixed(2)),
-      throughput: Number(throughput.toFixed(4)),
+      avgLatency: Number(m.averagePacketLatency.toFixed(2)),
+      maxLatency: Number(m.maxPacketLatency.toFixed(2)),
+      tailLatencyP99: Number(m.tailLatencyP99.toFixed(2)),
+      throughput: Number(m.throughputFlitsPerNodeCycle.toFixed(4)),
       bufferOccupancyPct: Number(m.averageBufferOccupancyPct.toFixed(1)),
-      energyPerFlitPJ: Number(energyPerFlit.toFixed(2)),
-      energyDelayProduct: Number((avgLatency * energyPerFlit).toFixed(2)),
+      energyPerFlitPJ: Number(m.energyPerFlitPJ.toFixed(2)),
+      energyDelayProduct: Number((m.averagePacketLatency * m.energyPerFlitPJ).toFixed(2)),
       isSaturated: m.saturationDetected || m.averageBufferOccupancyPct > 80,
     };
   }
@@ -97,10 +92,10 @@ export class SweepEngine {
     ];
 
     return workloads.map((w) => {
-      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', 0.35, 250);
-      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', 0.35, 250);
-      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', 0.35, 250);
-      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', 0.35, 250);
+      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', 0.35, 400);
+      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', 0.35, 400);
+      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', 0.35, 400);
+      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', 0.35, 400);
 
       const latencyReductionPct = ((ptXY.avgLatency - ptProposed.avgLatency) / Math.max(1, ptXY.avgLatency)) * 100;
       const throughputGainPct = ((ptProposed.throughput - ptXY.throughput) / Math.max(0.01, ptXY.throughput)) * 100;

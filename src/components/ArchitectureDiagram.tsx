@@ -8,7 +8,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { RoutingMode, WorkloadTelemetry, WorkloadType } from '../types/noc';
+import { RoutingMode, WorkloadTelemetry, WorkloadType } from '@shared/types/noc';
 
 interface ArchitectureDiagramProps {
   telemetry: WorkloadTelemetry;
@@ -28,8 +28,8 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   energyPJ,
 }) => {
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded p-3 text-[#c9d1d9] shadow-sm">
-      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#30363d]">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded p-3 text-[var(--text-primary)] shadow-sm">
+      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-emerald-500 rounded-sm"></div>
           <h2 className="text-[11px] font-bold uppercase font-mono tracking-widest text-slate-400">
@@ -45,7 +45,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
       {/* 5 Architecture Blocks */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-stretch">
         {/* Stage 1: AI Traffic */}
-        <div className="bg-[#0d1117] border border-[#30363d] p-2.5 rounded flex flex-col justify-between">
+        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-2.5 rounded flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">STAGE_01</span>
             <Activity className="w-3 h-3 text-emerald-400" />
@@ -56,13 +56,13 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
               {workload.replace('_', ' ')}
             </div>
           </div>
-          <div className="mt-2 text-[9px] bg-[#161b22] px-1.5 py-0.5 rounded text-slate-300 border border-[#30363d] font-mono">
+          <div className="mt-2 text-[9px] bg-[var(--bg-surface)] px-1.5 py-0.5 rounded text-slate-300 border border-[var(--border-subtle)] font-mono">
             HOP: {telemetry.averageHopDistance.toFixed(1)} &bull; BURST: {(telemetry.trafficBurstiness * 100).toFixed(0)}%
           </div>
         </div>
 
         {/* Stage 2: Workload Analyzer */}
-        <div className="bg-[#0d1117] border border-[#30363d] p-2.5 rounded flex flex-col justify-between">
+        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-2.5 rounded flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">STAGE_02</span>
             <Gauge className="w-3 h-3 text-emerald-400" />
@@ -79,7 +79,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
         </div>
 
         {/* Stage 3: Configuration Controller (Novel Core) */}
-        <div className="bg-[#0d1117] border border-emerald-500/60 p-2.5 rounded flex flex-col justify-between shadow-[0_0_12px_rgba(16,185,129,0.1)]">
+        <div className="bg-[var(--bg-inset)] border border-emerald-500/60 p-2.5 rounded flex flex-col justify-between shadow-[0_0_12px_rgba(16,185,129,0.1)]">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5" /> PROPOSED CONTROLLER
@@ -94,13 +94,13 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
               Mode: <span className="font-bold text-emerald-400">{telemetry.controllerActiveMode.replace('_', ' ')}</span>
             </div>
           </div>
-          <div className="mt-2 text-[9px] bg-[#161b22] text-slate-300 px-1.5 py-0.5 rounded border border-[#30363d] font-mono">
+          <div className="mt-2 text-[9px] bg-[var(--bg-surface)] text-slate-300 px-1.5 py-0.5 rounded border border-[var(--border-subtle)] font-mono">
             AREA: &lt;1.2% &bull; E_OVHD: {(telemetry.controllerOverheadEnergyPJ).toFixed(2)} pJ
           </div>
         </div>
 
         {/* Stage 4: Mesh NoC Fabric */}
-        <div className="bg-[#0d1117] border border-[#30363d] p-2.5 rounded flex flex-col justify-between">
+        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-2.5 rounded flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">STAGE_04</span>
             <Cpu className="w-3 h-3 text-emerald-400" />
@@ -111,13 +111,13 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
               XY &bull; DyXY &bull; RCA &bull; LowPower
             </div>
           </div>
-          <div className="mt-2 text-[9px] bg-[#161b22] px-1.5 py-0.5 rounded text-emerald-400 border border-[#30363d] font-mono">
+          <div className="mt-2 text-[9px] bg-[var(--bg-surface)] px-1.5 py-0.5 rounded text-emerald-400 border border-[var(--border-subtle)] font-mono">
             MODE: {activeMode.replace('_', ' ')}
           </div>
         </div>
 
         {/* Stage 5: Performance Monitor & Feedback */}
-        <div className="bg-[#0d1117] border border-[#30363d] p-2.5 rounded flex flex-col justify-between">
+        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-2.5 rounded flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">FEEDBACK</span>
             <Zap className="w-3 h-3 text-emerald-400" />
