@@ -1,0 +1,8 @@
+{
+  "name": "AI Workload-Aware Self-Reconfigurable Mesh NoC Simulator",
+  "description": "Simulation and evaluation platform for AI workload-aware self-reconfigurable Mesh Network-on-Chip (NoC) architectures featuring dynamic routing controllers, real-time flit tracking, and latency/energy benchmarking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
