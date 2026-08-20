@@ -1,8 +1,14 @@
 import { NoCConfig } from '../../../shared/types/noc';
 
 /**
- * Standard Network-on-Chip Energy & Power Model (Derived from Orion 3.0 & DSENT)
- * Values parameterized by technology node (7nm, 14nm, 28nm)
+ * Architecture-level NoC energy/power model, parameterized by technology
+ * node (7nm, 14nm, 28nm). These per-event coefficients are ILLUSTRATIVE: in
+ * the right relative proportion described by published NoC power studies
+ * such as Orion 3.0 and DSENT (buffer/crossbar/link scale relative to each
+ * other, and coarsely with technology node), but NOT literally produced by
+ * running those tools or any synthesis flow against this design, and NOT
+ * measured silicon power. Do not present them as more precise than that --
+ * same honesty policy as research-engine/noc/energy.py.
  */
 
 interface EnergyParameters {

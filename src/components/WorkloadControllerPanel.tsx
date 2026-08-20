@@ -96,6 +96,14 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
               {telemetry.detectedWorkloadClass}
             </span>
           </div>
+          <div className="flex items-center justify-between text-[10px] font-mono">
+            <span className="text-slate-500" title="Threshold-margin heuristic for this rule-based classifier, recomputed every epoch -- not a trained model's calibrated probability.">
+              Classification confidence (rule margin):
+            </span>
+            <span className="font-bold text-slate-300">
+              {telemetry.confidenceScore > 0 ? `${(telemetry.confidenceScore * 100).toFixed(0)}%` : '—'}
+            </span>
+          </div>
 
           {/* Workload Mapping Matrix in High Density format */}
           <div className="space-y-1 font-mono text-[9px]">

@@ -66,7 +66,7 @@ export class NoCSimulator {
       averageHopDistance: 2.0,
       detectedWorkloadClass: config.workloadType,
       controllerActiveMode: config.routingMode,
-      confidenceScore: 0.92,
+      confidenceScore: 0, // no classification epoch has run yet
       reconfigurationCount: 0,
       controllerOverheadEnergyPJ: 0,
       history: [],
@@ -108,7 +108,7 @@ export class NoCSimulator {
       averageHopDistance: 2.0,
       detectedWorkloadClass: this.config.workloadType,
       controllerActiveMode: this.config.routingMode,
-      confidenceScore: 0.92,
+      confidenceScore: 0, // no classification epoch has run yet
       reconfigurationCount: 0,
       controllerOverheadEnergyPJ: 0,
       history: [],
@@ -339,6 +339,33 @@ export class NoCSimulator {
       detectedClass = 'MOE_BURSTY';
     }
 
+    // Classification confidence: this is a threshold-based rule classifier,
+    // not a trained model with calibrated probabilities (that's what the
+    // separate Python research-engine's RandomForest is for -- see the
+    // Research tab). What we CAN honestly report here is how far past its
+    // deciding threshold the winning metric is, normalized to [0, 1]: a
+    // locality of 0.66 barely clearing the 0.65 CNN_LOCAL threshold is
+    // reported as low-confidence; a locality of 0.95 is reported as
+    // high-confidence. This was previously a hardcoded constant (0.92/0.94)
+    // that never actually reflected the classification -- fixed to be real.
+    const margin = (value: number, threshold: number) =>
+      Math.max(0.05, Math.min(1, (value - threshold) / Math.max(0.0001, 1 - threshold)));
+    let classificationConfidence: number;
+    if (detectedClass === 'CNN_LOCAL') {
+      classificationConfidence = margin(localityIndex, 0.65);
+    } else if (detectedClass === 'TRANSFORMER_GLOBAL') {
+      classificationConfidence =
+        hotspotPressure > 0.45 ? margin(hotspotPressure, 0.45) : margin(0.35 - localityIndex, 0);
+    } else if (detectedClass === 'MOE_BURSTY') {
+      classificationConfidence = margin(burstiness, 0.45);
+    } else {
+      // UNIFORM_RANDOM: confidence in "none of the other patterns matched"
+      // is how far each metric sits below its own threshold -- the closer
+      // any of them is to triggering, the less confident this default is.
+      const closeness = Math.max(localityIndex / 0.65, hotspotPressure / 0.45, burstiness / 0.45);
+      classificationConfidence = Math.max(0.05, Math.min(1, 1 - closeness));
+    }
+
     // Controller energy accounting (very small decision overhead)
     const energyParams = getEnergyParameters(this.config);
     const controllerEnergy = energyParams.controllerDecisionPJ * this.routers.size;
@@ -446,7 +473,7 @@ export class NoCSimulator {
       averageHopDistance: avgHop,
       detectedWorkloadClass: detectedClass,
       controllerActiveMode: routingMode === 'PROPOSED_RECONFIGURABLE' ? appliedMode : routingMode,
-      confidenceScore: 0.94,
+      confidenceScore: classificationConfidence,
       reconfigurationCount: this.reconfigurationCounter,
       controllerOverheadEnergyPJ: this.accumulatedEnergy.controllerDynamic,
       history: [...this.decisionHistory],
