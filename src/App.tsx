@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: NoCConfig = {
   dwellCycles: 300,
 };
 
-type Tab = 'simulator' | 'benchmarks' | 'matrix' | 'research';
+type Tab = 'simulator' | 'benchmarks' | 'research';
 
 export default function App() {
   const [config, setConfig] = useState<NoCConfig>(DEFAULT_CONFIG);
@@ -191,7 +191,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 2: Sweep Evaluation & Graphs */}
+        {/* Tab 2: Sweep Evaluation, Graphs & Baseline Matrix */}
         {activeTab === 'benchmarks' && (
           <div className="space-y-4">
             <BenchmarkCharts
@@ -206,22 +206,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 3: Baseline Matrix View */}
-        {activeTab === 'matrix' && (
-          <div className="space-y-4">
-            <ComparisonTable benchmarkData={benchmarkData} config={config} />
-            <BenchmarkCharts
-              benchmarkData={benchmarkData}
-              config={config}
-              onRunNewSweep={handleRunSweep}
-              workloadSensitivity={workloadSensitivity}
-              isSweeping={isSweeping}
-              sweepError={sweepError}
-            />
-          </div>
-        )}
-
-        {/* Tab 4: Research Novelty & Thesis */}
+        {/* Tab 3: Research Novelty & Thesis */}
         {activeTab === 'research' && <ResearchOverview />}
       </main>
 

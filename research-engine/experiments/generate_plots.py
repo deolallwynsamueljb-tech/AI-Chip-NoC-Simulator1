@@ -19,7 +19,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 PLOTS_DIR = os.path.join(RESULTS_DIR, "plots")
 
-POLICY_COLORS = {"XY": "#4C72B0", "WEST_FIRST": "#DD8452", "DYAD": "#55A868", "SELF_RECONFIG": "#8172B2"}
+POLICY_COLORS = {
+    "XY": "#4C72B0",
+    "WEST_FIRST": "#DD8452",
+    "DYAD": "#55A868",
+    "COST_ADAPTIVE": "#C44E52",
+    "ENERGY_AWARE": "#64B5CD",
+    "SELF_RECONFIG": "#8172B2",
+}
 
 
 def _read_csv(name):
@@ -31,14 +38,14 @@ def _read_csv(name):
 def plot_static_baseline_latency():
     rows = _read_csv("exp_static_baselines.csv")
     workloads = sorted({r["workload"] for r in rows}, key=lambda w: ["resnet18", "bert", "gemm", "sparse_gemm"].index(w))
-    policies = ["XY", "WEST_FIRST", "DYAD"]
-    fig, ax = plt.subplots(figsize=(8, 5))
-    width = 0.25
+    policies = ["XY", "WEST_FIRST", "DYAD", "COST_ADAPTIVE", "ENERGY_AWARE"]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    width = 0.16
     x = range(len(workloads))
     for i, policy in enumerate(policies):
         vals = [float(next(r["avg_latency"] for r in rows if r["workload"] == w and r["policy"] == policy)) for w in workloads]
         ax.bar([xi + i * width for xi in x], vals, width=width, label=policy, color=POLICY_COLORS[policy])
-    ax.set_xticks([xi + width for xi in x])
+    ax.set_xticks([xi + 2 * width for xi in x])
     ax.set_xticklabels(workloads)
     ax.set_ylabel("avg latency (cycles)")
     ax.set_title("Static baseline: avg latency by workload x routing policy")
@@ -51,14 +58,14 @@ def plot_static_baseline_latency():
 def plot_static_baseline_delivery_ratio():
     rows = _read_csv("exp_static_baselines.csv")
     workloads = sorted({r["workload"] for r in rows}, key=lambda w: ["resnet18", "bert", "gemm", "sparse_gemm"].index(w))
-    policies = ["XY", "WEST_FIRST", "DYAD"]
-    fig, ax = plt.subplots(figsize=(8, 5))
-    width = 0.25
+    policies = ["XY", "WEST_FIRST", "DYAD", "COST_ADAPTIVE", "ENERGY_AWARE"]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    width = 0.16
     x = range(len(workloads))
     for i, policy in enumerate(policies):
         vals = [float(next(r["delivery_ratio"] for r in rows if r["workload"] == w and r["policy"] == policy)) for w in workloads]
         ax.bar([xi + i * width for xi in x], vals, width=width, label=policy, color=POLICY_COLORS[policy])
-    ax.set_xticks([xi + width for xi in x])
+    ax.set_xticks([xi + 2 * width for xi in x])
     ax.set_xticklabels(workloads)
     ax.set_ylabel("delivery ratio (within cycle budget)")
     ax.set_title("Static baseline: delivery ratio (DyAD fails to fully drain BERT)")
@@ -121,6 +128,29 @@ def plot_injection_rate_sweep():
     ax.legend()
     fig.tight_layout()
     fig.savefig(os.path.join(PLOTS_DIR, "08_injection_rate_latency.png"), dpi=140)
+    plt.close(fig)
+
+
+def plot_packet_size_sensitivity():
+    rows = _read_csv("exp_packet_size_sensitivity.csv")
+    rows.sort(key=lambda r: int(r["packet_size_bytes"]))
+    sizes = [int(r["packet_size_bytes"]) for r in rows]
+    lats = [float(r["avg_latency"]) for r in rows]
+    energies = [float(r["energy_pj"]) for r in rows]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    ax1.plot(sizes, lats, marker="o", color=POLICY_COLORS["XY"])
+    ax1.set_xlabel("packet size (bytes)")
+    ax1.set_ylabel("avg latency (cycles)")
+    ax1.set_title("Latency vs packet size (Baseline_XY)")
+
+    ax2.plot(sizes, energies, marker="s", color=POLICY_COLORS["ENERGY_AWARE"])
+    ax2.set_xlabel("packet size (bytes)")
+    ax2.set_ylabel("total energy (pJ)")
+    ax2.set_title("Energy vs packet size (Baseline_XY)")
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(PLOTS_DIR, "09_packet_size_sensitivity.png"), dpi=140)
     plt.close(fig)
 
 
@@ -208,6 +238,7 @@ def main():
     plot_self_reconfig_vs_static()
     plot_buffer_sensitivity()
     plot_injection_rate_sweep()
+    plot_packet_size_sensitivity()
     plot_scalability()
     plot_dynamic_routing_timeline()
     report = plot_classifier_confusion_matrix()

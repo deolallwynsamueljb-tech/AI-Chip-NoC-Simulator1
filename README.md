@@ -9,7 +9,7 @@ rather than one forced-together codebase:
   derived from *real* AI-model architectures (CIFAR-style ResNet-18,
   DistilBERT, dense/sparse GEMM via Cannon's algorithm), a trained
   RandomForest workload classifier, and a self-reconfiguring controller with
-  hysteresis/dwell-time/confidence-floor anti-thrash safeguards. 23 unit
+  hysteresis/dwell-time/confidence-floor anti-thrash safeguards. 30 unit
   tests. Its own README documents real bugs found and fixed, and an honest
   known limitation (DyAD routing isn't deadlock-free in this simulator).
   Produces `results/*.csv` and `results/plots/*.png`, all generated from
@@ -82,7 +82,7 @@ run `python research-engine/workloads/generate_all.py` once to populate it.
 
 ```bash
 cd research-engine
-python -m unittest discover -s tests -p "test_*.py" -v   # 23 tests, all pass
+python -m unittest discover -s tests -p "test_*.py" -v   # 30 tests, all pass
 python workloads/generate_all.py                          # (re)generate traces/*.csv
 python classifier/train.py                                 # train the classifier
 python experiments/run_experiments.py                        # full experiment suite -> results/

@@ -139,7 +139,7 @@ export const ResearchOverview: React.FC = () => {
           This live simulator and <code>research-engine/</code> are two independently-built, purpose-built engines,
           not one shared codebase &mdash; the live view above runs synthetic traffic (or a replayed real-AI-model
           trace, see the Workload selector) with a fast per-tick model; <code>research-engine/</code> is a
-          separately tested, cycle-based simulator (23 unit tests) driven entirely by traffic derived from real
+          separately tested, cycle-based simulator (30 unit tests) driven entirely by traffic derived from real
           AI-model architectures (CIFAR-ResNet-18, DistilBERT, GEMM, Sparse-GEMM). The plots below are exactly what{' '}
           <code>research-engine/experiments/generate_plots.py</code> produced from a real run of{' '}
           <code>research-engine/experiments/run_experiments.py</code> &mdash; not hand-drawn, not retouched.
@@ -158,19 +158,24 @@ export const ResearchOverview: React.FC = () => {
             <strong className="text-amber-400">Known limitation, not hidden:</strong> DyAD (fully adaptive routing)
             is not deadlock-free in this simulator&apos;s single-buffer-per-port model &mdash; on the real BERT trace
             it delivers only 133/1470 packets (9.0%) before timing out, while XY and West-First both deliver 100%.
-            The controller&apos;s policy table deliberately never selects DyAD for BERT-like traffic as a direct
-            consequence of this measured finding.
+            COST_ADAPTIVE and ENERGY_AWARE (a richer 2-hop congestion-lookahead adaptive policy, added to close the
+            project&apos;s &quot;formal cost-function adaptive routing&quot; and &quot;energy-aware mode&quot;
+            requirements) do <em>worse</em> still on the same trace &mdash; 69/1470 (4.7%) &mdash; showing a richer
+            congestion signal doesn&apos;t fix the underlying deadlock-freedom gap and can even make the stall worse.
+            The controller&apos;s policy table deliberately never selects any of the three adaptive policies for
+            BERT-like traffic as a direct consequence of this measured finding.
           </p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
-            ['01_static_baseline_latency.png', 'Static baselines: latency by workload x policy'],
-            ['02_static_baseline_delivery_ratio.png', 'Static baselines: delivery ratio (DyAD/BERT fails)'],
+            ['01_static_baseline_latency.png', 'Static baselines: latency, all 5 policies x workload'],
+            ['02_static_baseline_delivery_ratio.png', 'Static baselines: delivery ratio (adaptive policies fail on BERT)'],
             ['03_self_reconfig_vs_static.png', 'Self-reconfig vs static XY, per workload'],
             ['06_dynamic_routing_timeline.png', 'Mixed-workload run: policy switches over time'],
             ['04_buffer_sensitivity.png', 'Buffer-depth sensitivity (BERT, XY)'],
             ['08_injection_rate_latency.png', 'Injection-rate sweep (Baseline_XY)'],
+            ['09_packet_size_sensitivity.png', 'Packet/flit-size sweep: latency + energy'],
             ['05_scalability.png', 'Scalability: 2x2 / 4x4 / 8x8 mesh'],
             ['07_classifier_confusion_matrix.png', 'Workload classifier confusion matrix'],
           ].map(([file, caption]) => (

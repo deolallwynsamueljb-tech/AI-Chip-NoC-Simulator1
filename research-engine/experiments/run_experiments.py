@@ -18,19 +18,24 @@ from workloads.bert import generate_bert_trace
 from workloads.gemm import generate_gemm_trace
 from workloads.sparse_gemm import generate_sparse_gemm_trace
 from workloads.synthetic import generate_synthetic_trace
+from noc.packet import FLIT_PAYLOAD_BYTES
 from classifier.classifier import HybridClassifier
 from controller.reconfig_controller import ReconfigController, POLICY_FOR_WORKLOAD
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "traces")
 
-POLICIES = ["XY", "WEST_FIRST", "DYAD"]
+POLICIES = ["XY", "WEST_FIRST", "DYAD", "COST_ADAPTIVE", "ENERGY_AWARE"]
 WORKLOADS = ["resnet18", "bert", "gemm", "sparse_gemm"]
 STATIC_MAX_CYCLES = 50_000
 BUFFER_DEPTH_DEFAULT = 8
 INJECTION_RATES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
 INJECTION_SWEEP_DURATION_CYCLES = 2000
 INJECTION_SWEEP_MAX_CYCLES = 60_000
+PACKET_SIZES_BYTES = [32, 64, 128, 256, 512, 1024]
+PACKET_SIZE_SWEEP_RATE = 0.2
+PACKET_SIZE_SWEEP_DURATION_CYCLES = 1500
+PACKET_SIZE_SWEEP_MAX_CYCLES = 60_000
 
 
 def _write_csv(path, rows, fieldnames):
@@ -176,6 +181,43 @@ def exp_injection_rate_sweep():
     return rows
 
 
+def exp_packet_size_sensitivity():
+    print("=== Experiment G: packet/flit-size sweep (Baseline_XY, synthetic uniform-random traffic) ===")
+    rows = []
+    for size in PACKET_SIZES_BYTES:
+        events = generate_synthetic_trace(
+            dim=4,
+            injection_rate=PACKET_SIZE_SWEEP_RATE,
+            duration_cycles=PACKET_SIZE_SWEEP_DURATION_CYCLES,
+            seed=0,
+            packet_size_bytes=size,
+        )
+        res = run_trace(
+            events, dim=4, routing="XY", buffer_depth=BUFFER_DEPTH_DEFAULT, max_cycles=PACKET_SIZE_SWEEP_MAX_CYCLES
+        )
+        row = {
+            "policy": "Baseline_XY",
+            "packet_size_bytes": size,
+            "flits_per_packet": max(1, -(-size // FLIT_PAYLOAD_BYTES)),
+            "packets_delivered": res.summary["packets_delivered"],
+            "packets_expected": res.summary["packets_expected"],
+            "delivery_ratio": res.summary["delivery_ratio"],
+            "avg_latency": res.summary["avg_latency"],
+            "max_latency": res.summary["max_latency"],
+            "throughput_pkts_per_cycle": res.summary["throughput_pkts_per_cycle"],
+            "avg_occupancy_ratio": res.summary["avg_occupancy_ratio"],
+            "energy_pj": res.energy["total_pj"],
+            "timed_out": res.timed_out,
+            "wall_seconds": round(res.wall_seconds, 3),
+        }
+        rows.append(row)
+        print(f"  size={size:5d}B ({row['flits_per_packet']:2d} flits) avg_lat={row['avg_latency']:.1f} "
+              f"max_lat={row['max_latency']:.1f} energy_pj={row['energy_pj']:.0f} "
+              f"delivered={row['packets_delivered']}/{row['packets_expected']} timed_out={row['timed_out']}")
+    _write_csv(os.path.join(RESULTS_DIR, "exp_packet_size_sensitivity.csv"), rows, list(rows[0].keys()))
+    return rows
+
+
 def exp_scalability():
     print("=== Experiment E: scalability (GEMM trace, XY routing, dim = 2/4/8) ===")
     rows = []
@@ -198,6 +240,7 @@ def main():
     exp_mixed_workload_switching()
     exp_buffer_sensitivity()
     exp_injection_rate_sweep()
+    exp_packet_size_sensitivity()
     exp_scalability()
     print("\nAll experiments complete. Results written to", RESULTS_DIR)
 

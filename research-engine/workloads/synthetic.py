@@ -14,10 +14,10 @@ import random
 
 from workloads.trace_format import TraceEvent
 
-PACKET_SIZE_BYTES = 64
+DEFAULT_PACKET_SIZE_BYTES = 64
 
 
-def generate_synthetic_trace(dim=4, injection_rate=0.1, duration_cycles=2000, seed=0):
+def generate_synthetic_trace(dim=4, injection_rate=0.1, duration_cycles=2000, seed=0, packet_size_bytes=DEFAULT_PACKET_SIZE_BYTES):
     assert 0.0 < injection_rate <= 1.0, "injection_rate must be in (0, 1]"
     rng = random.Random(seed)
     num_pes = dim * dim
@@ -29,7 +29,7 @@ def generate_synthetic_trace(dim=4, injection_rate=0.1, duration_cycles=2000, se
                 dst = rng.randrange(num_pes - 1)
                 if dst >= src:
                     dst += 1
-                events.append(TraceEvent(cycle, pid, src, dst, PACKET_SIZE_BYTES, "SYNTHETIC_UNIFORM", "synthetic"))
+                events.append(TraceEvent(cycle, pid, src, dst, packet_size_bytes, "SYNTHETIC_UNIFORM", "synthetic"))
                 pid += 1
     return events
 

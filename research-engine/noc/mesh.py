@@ -49,7 +49,7 @@ cycle regardless of the order routers happen to be visited in:
 from collections import deque
 
 from .packet import FlitType
-from .routing import ROUTING_FUNCS, id_to_xy, xy_to_id
+from .routing import ROUTING_FUNCS, COST_FN_POLICIES, id_to_xy, xy_to_id
 from .metrics import Metrics
 from .energy import EnergyModel
 
@@ -127,14 +127,44 @@ class Mesh:
 
         return f
 
+    def _cost_fn(self, router_id):
+        """Richer per-direction cost for COST_ADAPTIVE/ENERGY_AWARE: a 2-hop
+        regional congestion lookahead plus a link-utilization term. See
+        routing.py's module docstring for why Manhattan distance itself
+        isn't a further term here (it's constant among the productive
+        candidates these policies choose among)."""
+
+        def f(direction):
+            nbr_id = self.neighbor(router_id, direction)
+            if nbr_id is None:
+                return float("inf")
+            nbr = self.routers[nbr_id]
+            occ1 = len(nbr.in_buffers[OPPOSITE[direction]]) / max(1, nbr.buffer_depth)
+
+            nbr2_id = self.neighbor(nbr_id, direction)
+            regional = occ1
+            if nbr2_id is not None:
+                nbr2 = self.routers[nbr2_id]
+                occ2 = len(nbr2.in_buffers[OPPOSITE[direction]]) / max(1, nbr2.buffer_depth)
+                regional = 0.65 * occ1 + 0.35 * occ2
+
+            router = self.routers[router_id]
+            link_util = sum(1 for d in router.reservations.values() if d == direction)
+            link_util_ratio = link_util / max(1, len(IN_PORTS))
+
+            return regional + 0.3 * link_util_ratio
+
+        return f
+
     def step(self):
         cycle = self.cycle
         route_fn = ROUTING_FUNCS[self.routing]
 
         # Phase 1: ROUTE COMPUTE
+        build_cf = self._cost_fn if self.routing in COST_FN_POLICIES else self._congestion_fn
         hol_dir = {}  # (router_id, in_port) -> out_dir, only for ports with a HOL flit
         for r in self.routers.values():
-            cf = self._congestion_fn(r.node_id)
+            cf = build_cf(r.node_id)
             for port in IN_PORTS:
                 buf = r.in_buffers[port]
                 if not buf:
@@ -212,4 +242,5 @@ class Mesh:
                     r.injection_queue.popleft()
 
         self.metrics.sample_occupancy(self, cycle)
+        self.energy.record_static(self.in_flight_flit_count())
         self.cycle += 1

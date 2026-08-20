@@ -8,7 +8,6 @@ import {
   Cpu,
   BarChart3,
   Code2,
-  Sliders,
   Sparkles,
   Zap,
 } from 'lucide-react';
@@ -19,14 +18,14 @@ interface HeaderProps {
   isRunning: boolean;
   simSpeed: number;
   currentCycle: number;
-  activeTab: 'simulator' | 'benchmarks' | 'matrix' | 'research';
+  activeTab: 'simulator' | 'benchmarks' | 'research';
   connected: boolean;
   onTogglePlay: () => void;
   onStepCycle: (cycles: number) => void;
   onReset: () => void;
   onChangeSpeed: (speed: number) => void;
   onUpdateConfig: (partial: Partial<NoCConfig>) => void;
-  onSetActiveTab: (tab: 'simulator' | 'benchmarks' | 'matrix' | 'research') => void;
+  onSetActiveTab: (tab: 'simulator' | 'benchmarks' | 'research') => void;
   onOpenCodeExport: () => void;
   onRunSweep: () => void;
 }
@@ -110,19 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                Sweep Evaluation
-              </button>
-              <button
-                id="tab-matrix"
-                onClick={() => onSetActiveTab('matrix')}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'matrix'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                    : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                Baseline Matrix
+                Benchmarks
               </button>
               <button
                 id="tab-research"
