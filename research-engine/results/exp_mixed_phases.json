@@ -1,0 +1,37 @@
+{
+  "phases": [
+    {
+      "workload": "resnet18",
+      "start_cycle": 0,
+      "end_cycle": 1085
+    },
+    {
+      "workload": "bert",
+      "start_cycle": 1135,
+      "end_cycle": 2709
+    },
+    {
+      "workload": "gemm",
+      "start_cycle": 2759,
+      "end_cycle": 3032
+    },
+    {
+      "workload": "sparse_gemm",
+      "start_cycle": 3082,
+      "end_cycle": 3289
+    }
+  ],
+  "summary": {
+    "packets_delivered": 3619,
+    "packets_expected": 3619,
+    "delivery_ratio": 1.0,
+    "avg_latency": 11834.22077922078,
+    "max_latency": 22893,
+    "min_latency": 34,
+    "completed_cycle": 26181,
+    "throughput_pkts_per_cycle": 0.1382300141323861,
+    "link_hops": 437184,
+    "avg_occupancy_ratio": 0.38861146907216493
+  },
+  "timed_out": false
+}

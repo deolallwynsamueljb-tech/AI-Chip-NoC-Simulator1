@@ -95,7 +95,7 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
             </div>
           </div>
           <div className="mt-2 text-[9px] bg-[var(--bg-surface)] text-slate-300 px-1.5 py-0.5 rounded border border-[var(--border-subtle)] font-mono">
-            AREA: &lt;1.2% &bull; E_OVHD: {(telemetry.controllerOverheadEnergyPJ).toFixed(2)} pJ
+            E_OVHD: {(telemetry.controllerOverheadEnergyPJ).toFixed(2)} pJ (measured, this run)
           </div>
         </div>
 

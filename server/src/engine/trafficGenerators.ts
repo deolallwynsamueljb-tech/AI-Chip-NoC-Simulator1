@@ -1,10 +1,16 @@
-import { NoCConfig, WorkloadType } from '../../../shared/types/noc';
+import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../../../shared/types/noc';
+import { REAL_TRACES, traceDim, traceSpanCycles } from './realTraces';
 
 export interface TrafficTarget {
   dstX: number;
   dstY: number;
   priority: number;
   burstGroup?: number;
+  sizeBytes?: number;
+}
+
+function isTraceWorkload(w: WorkloadType): boolean {
+  return TRACE_WORKLOAD_TYPES.includes(w);
 }
 
 export class TrafficGenerator {
@@ -14,14 +20,72 @@ export class TrafficGenerator {
   private moeCurrentExpertX: number = 0;
   private moeCurrentExpertY: number = 0;
 
+  // Real-trace replay state: per-node (keyed "x,y") sorted event queues,
+  // a cursor + loop offset per node so each node's recorded schedule
+  // replays once, in order, then loops (looping is intentional and
+  // documented, not silently wrong -- a live demo session usually runs
+  // longer than one recorded trace).
+  private traceWorkload: WorkloadType | null = null;
+  private traceNodeEvents: Map<string, { cycle: number; dstX: number; dstY: number; sizeBytes: number }[]> = new Map();
+  private traceCursor: Map<string, number> = new Map();
+  private traceLoopOffset: Map<string, number> = new Map();
+  private traceEpochCycle: number | null = null;
+  private traceSpan = 0;
+
   constructor(config: NoCConfig) {
     this.config = config;
     this.moeCurrentExpertX = Math.floor(config.meshWidth / 2);
     this.moeCurrentExpertY = Math.floor(config.meshHeight / 2);
+    this.setupTraceReplayIfNeeded();
   }
 
   public updateConfig(config: NoCConfig) {
+    const workloadChanged = config.workloadType !== this.config.workloadType;
     this.config = config;
+    if (workloadChanged) this.setupTraceReplayIfNeeded();
+  }
+
+  private setupTraceReplayIfNeeded() {
+    const workload = this.config.workloadType;
+    if (!isTraceWorkload(workload)) {
+      this.traceWorkload = null;
+      return;
+    }
+
+    this.traceWorkload = workload;
+    this.traceNodeEvents = new Map();
+    this.traceCursor = new Map();
+    this.traceLoopOffset = new Map();
+    this.traceEpochCycle = null;
+    this.traceSpan = traceSpanCycles(workload);
+
+    if (this.config.meshWidth !== traceDim() || this.config.meshHeight !== traceDim()) {
+      // Real traces were only generated for a 4x4 mesh -- replaying them on
+      // any other size would misassign src/dst node ids. Fall back to
+      // uniform-random rather than silently misrouting.
+      return;
+    }
+
+    const dim = traceDim();
+    const events = REAL_TRACES[workload] ?? [];
+    for (const ev of events) {
+      const srcX = ev.srcId % dim;
+      const srcY = Math.floor(ev.srcId / dim);
+      const dstX = ev.dstId % dim;
+      const dstY = Math.floor(ev.dstId / dim);
+      const key = `${srcX},${srcY}`;
+      const list = this.traceNodeEvents.get(key) ?? [];
+      list.push({ cycle: ev.cycle, dstX, dstY, sizeBytes: ev.sizeBytes });
+      this.traceNodeEvents.set(key, list);
+    }
+  }
+
+  private nextTraceEvent(srcX: number, srcY: number) {
+    const key = `${srcX},${srcY}`;
+    const events = this.traceNodeEvents.get(key);
+    if (!events || events.length === 0) return null;
+    const idx = this.traceCursor.get(key) ?? 0;
+    return { key, events, idx };
   }
 
   /**
@@ -29,6 +93,15 @@ export class TrafficGenerator {
    */
   public shouldInject(srcX: number, srcY: number, cycle: number): boolean {
     const { workloadType, injectionRate, meshWidth, meshHeight } = this.config;
+
+    if (this.traceWorkload === workloadType && isTraceWorkload(workloadType)) {
+      const next = this.nextTraceEvent(srcX, srcY);
+      if (!next) return false;
+      if (this.traceEpochCycle === null) this.traceEpochCycle = cycle;
+      const offset = this.traceLoopOffset.get(next.key) ?? 0;
+      const dueCycle = next.events[next.idx].cycle + offset + this.traceEpochCycle;
+      return cycle >= dueCycle;
+    }
 
     if (workloadType === 'MOE_BURSTY') {
       // Periodic burst of active expert gating
@@ -57,6 +130,21 @@ export class TrafficGenerator {
    */
   public getDestination(srcX: number, srcY: number, cycle: number): TrafficTarget {
     const { workloadType, meshWidth, meshHeight } = this.config;
+
+    if (this.traceWorkload === workloadType && isTraceWorkload(workloadType)) {
+      const next = this.nextTraceEvent(srcX, srcY);
+      if (next) {
+        const ev = next.events[next.idx];
+        const nextIdx = next.idx + 1;
+        if (nextIdx >= next.events.length) {
+          this.traceCursor.set(next.key, 0);
+          this.traceLoopOffset.set(next.key, (this.traceLoopOffset.get(next.key) ?? 0) + this.traceSpan);
+        } else {
+          this.traceCursor.set(next.key, nextIdx);
+        }
+        return { dstX: ev.dstX, dstY: ev.dstY, priority: 1, sizeBytes: ev.sizeBytes };
+      }
+    }
 
     switch (workloadType) {
       case 'CNN_LOCAL': {

@@ -377,7 +377,9 @@ if __name__ == '__main__':
     return `// =============================================================================
 // Module: noc_reconfig_controller.v
 // Description: Lightweight Workload-Aware Self-Reconfigurable Routing Controller
-// Synthesis Target: ASIC / FPGA NoC Tile (Area Overhead < 1.2%)
+// Synthesis Target: ASIC / FPGA NoC Tile
+// NOTE: this module has not been synthesized -- no area/timing numbers are
+// claimed here. Run it through your target's synthesis flow to get real ones.
 // =============================================================================
 
 \`timescale 1ns / 1ps

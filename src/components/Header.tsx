@@ -241,6 +241,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <option value="HOTSPOT_TRAFFIC">HOTSPOT_TRAFFIC (Central Sink)</option>
                 <option value="UNIFORM_RANDOM">UNIFORM_RANDOM (Synthetic)</option>
                 <option value="BIT_COMPLEMENT">BIT_COMPLEMENT (Bisection)</option>
+                <option value="RESNET18_TRACE">RESNET18_TRACE (Real recorded trace, 4x4)</option>
+                <option value="BERT_TRACE">BERT_TRACE (Real recorded trace, 4x4)</option>
+                <option value="GEMM_TRACE">GEMM_TRACE (Real recorded trace, 4x4)</option>
+                <option value="SPARSE_GEMM_TRACE">SPARSE_GEMM_TRACE (Real recorded trace, 4x4)</option>
               </select>
             </div>
 

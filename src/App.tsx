@@ -32,6 +32,8 @@ const DEFAULT_CONFIG: NoCConfig = {
   injectionRate: 0.25,
   packetLengthFlits: 4,
   powerGatingThreshold: 8,
+  hysteresisWindows: 2,
+  dwellCycles: 300,
 };
 
 type Tab = 'simulator' | 'benchmarks' | 'matrix' | 'research';

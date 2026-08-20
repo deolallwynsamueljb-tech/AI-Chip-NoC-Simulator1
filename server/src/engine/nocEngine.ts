@@ -43,11 +43,18 @@ export class NoCSimulator {
     detectedPattern: string;
     selectedMode: RoutingMode;
     avgBufferLoad: number;
+    reason: string;
   }[] = [];
   private telemetry: WorkloadTelemetry;
   private reconfigurationCounter = 0;
   private saturationCycle: number | null = null;
   private isSaturated = false;
+
+  // Anti-thrash controller state (hysteresis + dwell time), mirroring
+  // research-engine/controller/reconfig_controller.py.
+  private pendingMode: RoutingMode | null = null;
+  private pendingCount = 0;
+  private lastReconfigCycle = -Infinity;
 
   constructor(config: NoCConfig) {
     this.config = config;
@@ -84,6 +91,9 @@ export class NoCSimulator {
     this.reconfigurationCounter = 0;
     this.saturationCycle = null;
     this.isSaturated = false;
+    this.pendingMode = null;
+    this.pendingCount = 0;
+    this.lastReconfigCycle = -Infinity;
     this.accumulatedEnergy = {
       staticLeakage: 0,
       bufferDynamic: 0,
@@ -334,37 +344,69 @@ export class NoCSimulator {
     const controllerEnergy = energyParams.controllerDecisionPJ * this.routers.size;
     this.accumulatedEnergy.controllerDynamic += controllerEnergy;
 
-    // Decision Logic for Proposed Self-Reconfigurable Controller
-    let selectedMode: RoutingMode = routingMode;
+    // Decision Logic for Proposed Self-Reconfigurable Controller.
+    //
+    // The raw per-epoch classification below (candidateMode) is noisy --
+    // acting on it directly would let the controller reconfigure every
+    // single epoch as traffic fluctuates. The offline Python research engine
+    // (research-engine/controller/reconfig_controller.py) found this thrash
+    // empirically and fixed it with two safeguards, ported here unchanged:
+    // hysteresis (a candidate must win `hysteresisWindows` consecutive
+    // epochs before it's applied) and a dwell time (a minimum number of
+    // cycles must pass since the last actual reconfiguration).
+    let candidateMode: RoutingMode = routingMode;
+    let appliedMode: RoutingMode = this.telemetry.controllerActiveMode;
+    let reconfigReason = 'static_policy';
 
     if (routingMode === 'PROPOSED_RECONFIGURABLE') {
       // Dynamic mode selection based on detected workload and network state:
       if (avgCongestion < 0.10 && this.config.injectionRate <= 0.12) {
-        selectedMode = 'LOW_POWER_BYPASS';
+        candidateMode = 'LOW_POWER_BYPASS';
       } else if (localityIndex >= 0.58) {
         // CNN / Local Systolic traffic -> Adaptive DyXY relieves nearest neighbors with minimal overhead
-        selectedMode = 'ADAPTIVE_DYXY';
+        candidateMode = 'ADAPTIVE_DYXY';
       } else if (hotspotPressure > 0.38 || detectedClass === 'TRANSFORMER_GLOBAL' || detectedClass === 'MOE_BURSTY') {
         // Global all-to-all or heavy hotspot -> Congestion-Aware RCA deflects around overloaded core
-        selectedMode = 'CONGESTION_AWARE_RCA';
+        candidateMode = 'CONGESTION_AWARE_RCA';
       } else {
-        selectedMode = 'ADAPTIVE_DYXY';
+        candidateMode = 'ADAPTIVE_DYXY';
       }
 
-      // Check if reconfigured
-      if (selectedMode !== this.telemetry.controllerActiveMode) {
-        this.reconfigurationCounter++;
+      if (candidateMode === appliedMode) {
+        this.pendingMode = null;
+        this.pendingCount = 0;
+        reconfigReason = 'already_active';
+      } else {
+        if (candidateMode === this.pendingMode) {
+          this.pendingCount++;
+        } else {
+          this.pendingMode = candidateMode;
+          this.pendingCount = 1;
+        }
+
+        if (this.pendingCount < this.config.hysteresisWindows) {
+          reconfigReason = `hysteresis_wait(${this.pendingCount}/${this.config.hysteresisWindows})`;
+        } else if (this.currentCycle - this.lastReconfigCycle < this.config.dwellCycles) {
+          reconfigReason = 'dwell_time_block';
+        } else {
+          appliedMode = candidateMode;
+          this.lastReconfigCycle = this.currentCycle;
+          this.pendingCount = 0;
+          this.pendingMode = null;
+          this.reconfigurationCounter++;
+          reconfigReason = 'applied';
+        }
       }
 
-      // Apply dynamic per-router configuration
+      // Apply the (post-hysteresis) active mode as per-router configuration
       this.routers.forEach((r) => {
         // Inner routers subject to high pressure get Congestion-Aware RCA, outer low-traffic boundary can use Low-Power/Adaptive
         const isCenter =
           Math.abs(r.x - (meshWidth - 1) / 2) <= 0.8 &&
           Math.abs(r.y - (meshHeight - 1) / 2) <= 0.8;
 
-        let routerMode = selectedMode;
-        if (selectedMode === 'CONGESTION_AWARE_RCA' && !isCenter && r.congestionScore < 0.15) {
+        let routerMode = appliedMode;
+        if (appliedMode === 'CONGESTION_AWARE_RCA' && !isCenter && r.congestionScore < 0.15) {
           routerMode = 'ADAPTIVE_DYXY';
         }
 
@@ -372,7 +414,7 @@ export class NoCSimulator {
         r.controllerDecisions.unshift({
           cycle: this.currentCycle,
           selectedMode: routerMode,
-          reason: `Workload: ${detectedClass} (Locality: ${(localityIndex * 100).toFixed(0)}%, Hotspot: ${(hotspotPressure * 100).toFixed(0)}%)`,
+          reason: `Workload: ${detectedClass} (Locality: ${(localityIndex * 100).toFixed(0)}%, Hotspot: ${(hotspotPressure * 100).toFixed(0)}%) [${reconfigReason}]`,
           workloadDetected: detectedClass,
           localityIndex,
           congestionGradient: hotspotPressure,
@@ -389,8 +431,9 @@ export class NoCSimulator {
     this.decisionHistory.unshift({
       cycle: this.currentCycle,
       detectedPattern: `${detectedClass} (Loc: ${(localityIndex * 100).toFixed(0)}%)`,
-      selectedMode: routingMode === 'PROPOSED_RECONFIGURABLE' ? selectedMode : routingMode,
+      selectedMode: routingMode === 'PROPOSED_RECONFIGURABLE' ? appliedMode : routingMode,
       avgBufferLoad: avgCongestion * 100,
+      reason: reconfigReason,
     });
     if (this.decisionHistory.length > 20) {
       this.decisionHistory.pop();
@@ -402,7 +445,7 @@ export class NoCSimulator {
       trafficBurstiness: burstiness,
       averageHopDistance: avgHop,
       detectedWorkloadClass: detectedClass,
-      controllerActiveMode: routingMode === 'PROPOSED_RECONFIGURABLE' ? selectedMode : routingMode,
+      controllerActiveMode: routingMode === 'PROPOSED_RECONFIGURABLE' ? appliedMode : routingMode,
       confidenceScore: 0.94,
       reconfigurationCount: this.reconfigurationCounter,
       controllerOverheadEnergyPJ: this.accumulatedEnergy.controllerDynamic,
@@ -578,13 +621,30 @@ export class NoCSimulator {
    */
   private processPacketInjection(energyParams: ReturnType<typeof getEnergyParameters>): void {
     let injectedThisCycle = 0;
-    const packetLength = this.config.packetLengthFlits || 4;
+    const defaultPacketLength = this.config.packetLengthFlits || 4;
+    const bytesPerFlit = Math.max(1, Math.floor(this.config.flitDataBits / 8));
 
     this.routers.forEach((router) => {
       if (this.trafficGen.shouldInject(router.x, router.y, this.currentCycle)) {
         const target = this.trafficGen.getDestination(router.x, router.y, this.currentCycle);
         const manhattan = Math.abs(target.dstX - router.x) + Math.abs(target.dstY - router.y);
         this.recentHopDistances.push(manhattan);
+
+        // Real-trace workloads carry their recorded packet size; every other
+        // (synthetic) workload uses the configured fixed packet length. This
+        // engine admits a packet's flits into the local injection buffer all
+        // at once (see the capacity check below), so a packet can never be
+        // longer than the buffer itself -- capped here at bufferDepthPerVC,
+        // a real physical constraint of this admission model, not an
+        // invented number. This means a real trace's larger recorded
+        // messages (e.g. BERT's ~3KB attention exchanges) inject as fewer
+        // flits here than their true byte size implies under small default
+        // buffer depths; the uncapped, byte-accurate numbers are what
+        // research-engine's offline experiments actually measure and plot.
+        const packetLength =
+          target.sizeBytes !== undefined
+            ? Math.max(1, Math.min(this.config.bufferDepthPerVC, Math.ceil(target.sizeBytes / bytesPerFlit)))
+            : defaultPacketLength;
 
         // Check if Local injection buffer (VC0) has capacity
         const localBuffer = router.buffers.get('LOCAL_0');

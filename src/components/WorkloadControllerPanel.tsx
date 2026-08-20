@@ -155,13 +155,28 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
             <div className="text-slate-600 italic">Listening for workload epoch state changes...</div>
           ) : (
             telemetry.history.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-1.5 leading-tight">
-                <span className="text-emerald-400 shrink-0">[{item.cycle}c]</span>
-                <span className="text-slate-400">{item.detectedPattern} &rarr;</span>
-                <span className="text-white font-bold">{item.selectedMode.replace('_', ' ')}</span>
-                <span className="text-[8px] text-slate-500 ml-auto">
-                  (avg: {item.avgBufferLoad.toFixed(0)}%)
-                </span>
+              <div key={idx} className="flex flex-col leading-tight">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-emerald-400 shrink-0">[{item.cycle}c]</span>
+                  <span className="text-slate-400">{item.detectedPattern} &rarr;</span>
+                  <span className="text-white font-bold">{item.selectedMode.replace('_', ' ')}</span>
+                  <span className="text-[8px] text-slate-500 ml-auto">
+                    (avg: {item.avgBufferLoad.toFixed(0)}%)
+                  </span>
+                </div>
+                {item.reason && item.reason !== 'static_policy' && (
+                  <span
+                    className={`text-[8px] ml-[52px] ${
+                      item.reason === 'applied'
+                        ? 'text-emerald-500'
+                        : item.reason === 'already_active'
+                        ? 'text-slate-600'
+                        : 'text-amber-500'
+                    }`}
+                  >
+                    {item.reason}
+                  </span>
+                )}
               </div>
             ))
           )}

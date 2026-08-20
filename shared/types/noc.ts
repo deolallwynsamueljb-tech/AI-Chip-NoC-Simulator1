@@ -11,7 +11,22 @@ export type WorkloadType =
   | 'MOE_BURSTY'
   | 'UNIFORM_RANDOM'
   | 'BIT_COMPLEMENT'
-  | 'HOTSPOT_TRAFFIC';
+  | 'HOTSPOT_TRAFFIC'
+  | 'RESNET18_TRACE'
+  | 'BERT_TRACE'
+  | 'GEMM_TRACE'
+  | 'SPARSE_GEMM_TRACE';
+
+/** Workload types that replay a recorded event schedule (from
+ * research-engine/traces/*.csv) instead of generating traffic synthetically.
+ * Only valid on a 4x4 mesh, since that's the dimension the traces were
+ * generated at. */
+export const TRACE_WORKLOAD_TYPES: WorkloadType[] = [
+  'RESNET18_TRACE',
+  'BERT_TRACE',
+  'GEMM_TRACE',
+  'SPARSE_GEMM_TRACE',
+];
 
 export type PortDirection = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'LOCAL';
 
@@ -29,6 +44,8 @@ export interface NoCConfig {
   injectionRate: number; // 0.01 - 0.60 flits/node/cycle
   packetLengthFlits: number; // e.g. 4 flits
   powerGatingThreshold: number; // cycles of idle before power gating VC
+  hysteresisWindows: number; // consecutive epochs a candidate mode must win before PROPOSED_RECONFIGURABLE applies it
+  dwellCycles: number; // minimum cycles since the last actual reconfiguration before another is allowed
 }
 
 export type FlitType = 'HEAD' | 'BODY' | 'TAIL' | 'SINGLE';
@@ -128,6 +145,7 @@ export interface WorkloadTelemetry {
     detectedPattern: string;
     selectedMode: RoutingMode;
     avgBufferLoad: number;
+    reason: string; // 'applied' | 'already_active' | 'hysteresis_wait(n/required)' | 'dwell_time_block' | 'static_policy'
   }[];
 }
 
