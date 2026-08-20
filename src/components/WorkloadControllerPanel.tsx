@@ -105,49 +105,44 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
             </span>
           </div>
 
-          {/* Workload Mapping Matrix in High Density format */}
-          <div className="space-y-1 font-mono text-[9px]">
-            <div
-              className={`p-1.5 rounded flex items-center justify-between border ${
-                telemetry.detectedWorkloadClass === 'CNN_LOCAL'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-                  : 'bg-[var(--bg-surface)] text-slate-400 border-[var(--border-subtle)]'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                <span>CNN / High Locality (&gt;60%)</span>
+          {/* Workload -> mode legend, condensed to one row */}
+          <div className="grid grid-cols-3 gap-1 font-mono text-[8px]">
+            {[
+              {
+                match: telemetry.detectedWorkloadClass === 'CNN_LOCAL',
+                dot: 'bg-emerald-400',
+                active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                label: 'CNN (>60% local)',
+                mode: 'Adaptive DyXY',
+              },
+              {
+                match: telemetry.detectedWorkloadClass === 'TRANSFORMER_GLOBAL',
+                dot: 'bg-purple-400',
+                active: 'bg-purple-950/40 text-purple-300 border-purple-500/40',
+                label: 'Transformer (global)',
+                mode: 'Congestion RCA',
+              },
+              {
+                match: telemetry.detectedWorkloadClass === 'UNIFORM_RANDOM' || telemetry.detectedWorkloadClass === 'MOE_BURSTY',
+                dot: 'bg-cyan-400',
+                active: 'bg-cyan-950/40 text-cyan-300 border-cyan-500/40',
+                label: 'Sparse / low load',
+                mode: 'Low-Power',
+              },
+            ].map((row) => (
+              <div
+                key={row.label}
+                className={`p-1.5 rounded border leading-tight ${
+                  row.match ? `${row.active} font-bold` : 'bg-[var(--bg-surface)] text-slate-500 border-[var(--border-subtle)]'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${row.dot}`}></span>
+                  <span>{row.label}</span>
+                </div>
+                <div className="mt-0.5">&rarr; {row.mode}</div>
               </div>
-              <span className="text-emerald-400">&rarr; Adaptive (DyXY)</span>
-            </div>
-
-            <div
-              className={`p-1.5 rounded flex items-center justify-between border ${
-                telemetry.detectedWorkloadClass === 'TRANSFORMER_GLOBAL'
-                  ? 'bg-purple-950/40 text-purple-300 border-purple-500/40 font-bold'
-                  : 'bg-[var(--bg-surface)] text-slate-400 border-[var(--border-subtle)]'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                <span>Transformer / Global Hop (&gt;2.2)</span>
-              </div>
-              <span className="text-purple-300">&rarr; Congestion (RCA)</span>
-            </div>
-
-            <div
-              className={`p-1.5 rounded flex items-center justify-between border ${
-                telemetry.detectedWorkloadClass === 'UNIFORM_RANDOM' || telemetry.detectedWorkloadClass === 'MOE_BURSTY'
-                  ? 'bg-cyan-950/40 text-cyan-300 border-cyan-500/40 font-bold'
-                  : 'bg-[var(--bg-surface)] text-slate-400 border-[var(--border-subtle)]'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                <span>Sparse / Low-Power Bypass</span>
-              </div>
-              <span className="text-cyan-300">&rarr; Low-Power Bypass</span>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -162,31 +157,63 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
           {(!telemetry?.history || telemetry.history.length === 0) ? (
             <div className="text-slate-600 italic">Listening for workload epoch state changes...</div>
           ) : (
-            telemetry.history.map((item, idx) => (
-              <div key={idx} className="flex flex-col leading-tight">
-                <div className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 shrink-0">[{item.cycle}c]</span>
-                  <span className="text-slate-400">{item.detectedPattern} &rarr;</span>
-                  <span className="text-white font-bold">{item.selectedMode.replace('_', ' ')}</span>
-                  <span className="text-[8px] text-slate-500 ml-auto">
-                    (avg: {item.avgBufferLoad.toFixed(0)}%)
-                  </span>
-                </div>
-                {item.reason && item.reason !== 'static_policy' && (
-                  <span
-                    className={`text-[8px] ml-[52px] ${
-                      item.reason === 'applied'
-                        ? 'text-emerald-500'
-                        : item.reason === 'already_active'
-                        ? 'text-slate-600'
-                        : 'text-amber-500'
-                    }`}
-                  >
-                    {item.reason}
-                  </span>
-                )}
-              </div>
-            ))
+            // Collapse consecutive "already_active" entries (the steady-state
+            // case, often dozens in a row) into one summary line -- keeps
+            // every reconfiguration attempt (applied / hysteresis_wait /
+            // dwell_time_block) visible individually, since those are the
+            // rare, interesting events, without a wall of repeated lines.
+            (() => {
+              const out: Array<
+                | { kind: 'single'; item: (typeof telemetry.history)[number] }
+                | { kind: 'run'; item: (typeof telemetry.history)[number]; count: number; oldestCycle: number }
+              > = [];
+              for (const item of telemetry.history) {
+                const last = out[out.length - 1];
+                if (
+                  item.reason === 'already_active' &&
+                  last &&
+                  last.kind === 'run' &&
+                  last.item.selectedMode === item.selectedMode
+                ) {
+                  last.count += 1;
+                  last.oldestCycle = item.cycle;
+                } else if (item.reason === 'already_active') {
+                  out.push({ kind: 'run', item, count: 1, oldestCycle: item.cycle });
+                } else {
+                  out.push({ kind: 'single', item });
+                }
+              }
+              return out.map((row, idx) =>
+                row.kind === 'run' ? (
+                  <div key={idx} className="flex items-start gap-1.5 leading-tight text-slate-600">
+                    <span className="shrink-0">[{row.oldestCycle}c&ndash;{row.item.cycle}c]</span>
+                    <span>
+                      {row.item.selectedMode.replace('_', ' ')} steady &mdash; already active x{row.count}
+                    </span>
+                  </div>
+                ) : (
+                  <div key={idx} className="flex flex-col leading-tight">
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-emerald-400 shrink-0">[{row.item.cycle}c]</span>
+                      <span className="text-slate-400">{row.item.detectedPattern} &rarr;</span>
+                      <span className="text-white font-bold">{row.item.selectedMode.replace('_', ' ')}</span>
+                      <span className="text-[8px] text-slate-500 ml-auto">
+                        (avg: {row.item.avgBufferLoad.toFixed(0)}%)
+                      </span>
+                    </div>
+                    {row.item.reason && row.item.reason !== 'static_policy' && (
+                      <span
+                        className={`text-[8px] ml-[52px] ${
+                          row.item.reason === 'applied' ? 'text-emerald-500' : 'text-amber-500'
+                        }`}
+                      >
+                        {row.item.reason}
+                      </span>
+                    )}
+                  </div>
+                )
+              );
+            })()
           )}
         </div>
       </div>

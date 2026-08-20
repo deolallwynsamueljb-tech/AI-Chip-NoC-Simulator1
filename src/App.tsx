@@ -159,9 +159,6 @@ export default function App() {
           telemetry={telemetry}
           activeMode={config.routingMode}
           workload={config.workloadType}
-          avgLatency={metrics.averagePacketLatency}
-          throughput={metrics.throughputFlitsPerNodeCycle}
-          energyPJ={metrics.totalEnergyPJ}
         />
 
         {/* Tab 1: Live Simulator View */}
