@@ -9,7 +9,7 @@ import {
   SimulationMetrics,
   WorkloadTelemetry,
   WorkloadType,
-} from '../../../shared/types/noc';
+} from '../types/noc';
 import { getEnergyParameters } from './energyModel';
 import { RoutingEngine } from './routingAlgorithms';
 import { TrafficGenerator } from './trafficGenerators';

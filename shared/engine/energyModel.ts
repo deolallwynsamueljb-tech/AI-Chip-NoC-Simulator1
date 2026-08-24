@@ -1,4 +1,4 @@
-import { NoCConfig } from '../../../shared/types/noc';
+import { NoCConfig } from '../types/noc';
 
 /**
  * Architecture-level NoC energy/power model, parameterized by technology

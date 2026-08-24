@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   NoCConfig,
   BenchmarkComparisonData,
   WorkloadSensitivityItem,
 } from '@shared/types/noc';
-import { createSession, runSensitivitySweep, runSweep } from './api/client';
-import { useSimulationSocket } from './api/useSimulationSocket';
+import { runSensitivitySweep, runSweep } from './api/client';
+import { useLocalSimulation } from './sim/useLocalSimulation';
 import { Header } from './components/Header';
 import { ArchitectureDiagram } from './components/ArchitectureDiagram';
 import { MeshGrid } from './components/MeshGrid';
@@ -40,8 +40,6 @@ type Tab = 'simulator' | 'benchmarks' | 'research';
 
 export default function App() {
   const [config, setConfig] = useState<NoCConfig>(DEFAULT_CONFIG);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [bootError, setBootError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('simulator');
   const [selectedRouterId, setSelectedRouterId] = useState<number | null>(null);
   const [isCodeExportOpen, setIsCodeExportOpen] = useState<boolean>(false);
@@ -66,22 +64,7 @@ export default function App() {
     reset,
     setSpeed,
     updateConfig: sendConfigUpdate,
-  } = useSimulationSocket(sessionId);
-
-  // Bootstrap: create a real server-side simulation session once on mount.
-  useEffect(() => {
-    let cancelled = false;
-    createSession(DEFAULT_CONFIG)
-      .then(({ sessionId: id }) => {
-        if (!cancelled) setSessionId(id);
-      })
-      .catch((err) => {
-        if (!cancelled) setBootError(err instanceof Error ? err.message : 'Failed to start simulation session');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  } = useLocalSimulation(DEFAULT_CONFIG);
 
   const handleStepCycle = useCallback((cycles: number) => step(cycles), [step]);
   const handleReset = useCallback(() => reset(), [reset]);
@@ -113,18 +96,7 @@ export default function App() {
 
   const selectedRouter = selectedRouterId !== null ? routers.get(selectedRouterId) || null : null;
 
-  if (bootError) {
-    return (
-      <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex items-center justify-center p-6 font-mono text-sm">
-        <div className="max-w-md text-center space-y-2">
-          <p className="text-red-400 font-bold">Could not reach the simulation server</p>
-          <p className="text-slate-400">{bootError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!sessionId || !metrics || !telemetry) {
+  if (!metrics || !telemetry) {
     return (
       <div className="min-h-screen bg-[#0a0c10] text-[#c9d1d9] flex items-center justify-center p-6 font-mono text-sm">
         Starting simulation session…
@@ -210,7 +182,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-[#30363d] bg-[#0d1117] py-3 text-center text-[10px] font-mono text-slate-500">
         AI Workload-Aware Self-Reconfigurable Mesh Network-on-Chip (NoC) Architecture Platform &bull; Baseline-1 XY
-        Evaluation &bull; Server-Computed Cycle-Accurate Simulator
+        Evaluation &bull; Cycle-Accurate In-Browser Simulator
       </footer>
 
       {/* Router Inspector Modal */}

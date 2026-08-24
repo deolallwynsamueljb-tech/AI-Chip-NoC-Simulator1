@@ -1,4 +1,4 @@
-import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../../../shared/types/noc';
+import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc';
 import { NoCSimulator } from './nocEngine';
 
 export class SweepEngine {

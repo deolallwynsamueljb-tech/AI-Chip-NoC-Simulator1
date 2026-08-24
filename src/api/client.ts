@@ -2,7 +2,6 @@ import type {
   BenchmarkComparisonData,
   NoCConfig,
   SimulationMetrics,
-  SimulationSnapshot,
   WorkloadSensitivityItem,
   WorkloadTelemetry,
 } from '@shared/types/noc';
@@ -19,13 +18,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return res.json() as Promise<T>;
-}
-
-export function createSession(config: NoCConfig) {
-  return request<{ sessionId: string; snapshot: SimulationSnapshot }>('/sessions', {
-    method: 'POST',
-    body: JSON.stringify({ config }),
-  });
 }
 
 /** Runs a real multi-mode sweep on the server. No cached or precomputed curves. */

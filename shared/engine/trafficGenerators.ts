@@ -1,4 +1,4 @@
-import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../../../shared/types/noc';
+import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../types/noc';
 import { REAL_TRACES, traceDim, traceSpanCycles } from './realTraces';
 
 export interface TrafficTarget {

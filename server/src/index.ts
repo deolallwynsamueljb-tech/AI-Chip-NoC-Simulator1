@@ -1,10 +1,8 @@
 import 'dotenv/config';
 import path from 'node:path';
-import { createServer } from 'node:http';
 import express from 'express';
 import { router } from './routes';
 import { assistantRouter } from './assistant';
-import { attachWebSocketServer } from './ws';
 
 const PORT = Number(process.env.PORT) || 8787;
 
@@ -27,9 +25,6 @@ app.get('*', (req, res, next) => {
   });
 });
 
-const httpServer = createServer(app);
-attachWebSocketServer(httpServer);
-
-httpServer.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`NoC simulator server listening on http://localhost:${PORT}`);
 });

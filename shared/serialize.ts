@@ -1,5 +1,5 @@
 import type { NoCSimulator } from './engine/nocEngine';
-import type { SerializedRouterNode, SimulationSnapshot } from '../../shared/types/noc';
+import type { SerializedRouterNode, SimulationSnapshot } from './types/noc';
 
 export function buildSnapshot(sim: NoCSimulator): SimulationSnapshot {
   const routers: SerializedRouterNode[] = Array.from(sim.getRouters().values()).map((router) => ({
