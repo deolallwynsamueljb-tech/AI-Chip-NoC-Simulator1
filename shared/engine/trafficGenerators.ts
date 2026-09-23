@@ -1,5 +1,5 @@
 import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../types/noc.js';
-import { REAL_TRACES, traceDim, traceSpanCycles } from './realTraces.js';
+import { REAL_TRACES, TraceEvent, traceDim, spanCyclesForEvents } from './realTraces.js';
 
 export interface TrafficTarget {
   dstX: number;
@@ -32,6 +32,11 @@ export class TrafficGenerator {
   private traceEpochCycle: number | null = null;
   private traceSpan = 0;
 
+  // CUSTOM_TRACE's events come from a user-uploaded file at runtime, not a
+  // bundled asset, so they can't live in REAL_TRACES -- set via
+  // setCustomTraceEvents() before or after CUSTOM_TRACE is selected.
+  private customTraceEvents: TraceEvent[] | null = null;
+
   constructor(config: NoCConfig) {
     this.config = config;
     this.moeCurrentExpertX = Math.floor(config.meshWidth / 2);
@@ -43,6 +48,13 @@ export class TrafficGenerator {
     const workloadChanged = config.workloadType !== this.config.workloadType;
     this.config = config;
     if (workloadChanged) this.setupTraceReplayIfNeeded();
+  }
+
+  /** Load a user-uploaded trace for CUSTOM_TRACE. Re-applies immediately if
+   * CUSTOM_TRACE is already the active workload. */
+  public setCustomTraceEvents(events: TraceEvent[]): void {
+    this.customTraceEvents = events;
+    if (this.config.workloadType === 'CUSTOM_TRACE') this.setupTraceReplayIfNeeded();
   }
 
   private setupTraceReplayIfNeeded() {
@@ -57,7 +69,9 @@ export class TrafficGenerator {
     this.traceCursor = new Map();
     this.traceLoopOffset = new Map();
     this.traceEpochCycle = null;
-    this.traceSpan = traceSpanCycles(workload);
+
+    const events = workload === 'CUSTOM_TRACE' ? this.customTraceEvents ?? [] : REAL_TRACES[workload] ?? [];
+    this.traceSpan = spanCyclesForEvents(events);
 
     if (this.config.meshWidth !== traceDim() || this.config.meshHeight !== traceDim()) {
       // Real traces were only generated for a 4x4 mesh -- replaying them on
@@ -67,7 +81,6 @@ export class TrafficGenerator {
     }
 
     const dim = traceDim();
-    const events = REAL_TRACES[workload] ?? [];
     for (const ev of events) {
       const srcX = ev.srcId % dim;
       const srcY = Math.floor(ev.srcId / dim);

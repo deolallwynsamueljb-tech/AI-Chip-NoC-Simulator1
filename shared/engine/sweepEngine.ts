@@ -1,16 +1,20 @@
 import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc.js';
 import { NoCSimulator } from './nocEngine.js';
+import { TraceEvent } from './realTraces.js';
 
 export class SweepEngine {
   public static readonly DEFAULT_RATES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60];
 
   /**
-   * Run a fast discrete sweep across all routing algorithms for a given workload and configuration
+   * Run a fast discrete sweep across all routing algorithms for a given workload and configuration.
+   * customTraceEvents is only used when baseConfig.workloadType is CUSTOM_TRACE (a user-uploaded
+   * trace, which can't live in a bundled asset the way the built-in traces do).
    */
   public static runMultiModeSweep(
     baseConfig: NoCConfig,
     injectionRates: number[] = SweepEngine.DEFAULT_RATES,
-    cyclesPerPoint: number = 500
+    cyclesPerPoint: number = 500,
+    customTraceEvents?: TraceEvent[]
   ): BenchmarkComparisonData {
     const algorithms: (keyof BenchmarkComparisonData['results'])[] = [
       'BASELINE_XY',
@@ -30,7 +34,7 @@ export class SweepEngine {
 
     algorithms.forEach((algo) => {
       injectionRates.forEach((rate) => {
-        const sweepPoint = this.simulatePoint(baseConfig, algo, rate, cyclesPerPoint);
+        const sweepPoint = this.simulatePoint(baseConfig, algo, rate, cyclesPerPoint, customTraceEvents);
         results[algo].push(sweepPoint);
       });
     });
@@ -48,7 +52,8 @@ export class SweepEngine {
     baseConfig: NoCConfig,
     mode: RoutingMode,
     injectionRate: number,
-    warmupAndMeasureCycles: number = 600
+    warmupAndMeasureCycles: number = 600,
+    customTraceEvents?: TraceEvent[]
   ): SweepPoint {
     const config: NoCConfig = {
       ...baseConfig,
@@ -57,6 +62,9 @@ export class SweepEngine {
     };
 
     const sim = new NoCSimulator(config);
+    if (config.workloadType === 'CUSTOM_TRACE' && customTraceEvents) {
+      sim.setCustomTrace(customTraceEvents);
+    }
     // Warmup: let the network reach steady state before measuring
     sim.stepCycles(150);
     // Measure

@@ -16,17 +16,19 @@ export type WorkloadType =
   | 'RESNET18_TRACE'
   | 'BERT_TRACE'
   | 'GEMM_TRACE'
-  | 'SPARSE_GEMM_TRACE';
+  | 'SPARSE_GEMM_TRACE'
+  | 'CUSTOM_TRACE';
 
 /** Workload types that replay a recorded event schedule (from
- * research-engine/traces/*.csv) instead of generating traffic synthetically.
- * Only valid on a 4x4 mesh, since that's the dimension the traces were
- * generated at. */
+ * research-engine/traces/*.csv, or a user-uploaded file for CUSTOM_TRACE)
+ * instead of generating traffic synthetically. Only valid on a 4x4 mesh,
+ * since that's the dimension these traces are keyed to. */
 export const TRACE_WORKLOAD_TYPES: WorkloadType[] = [
   'RESNET18_TRACE',
   'BERT_TRACE',
   'GEMM_TRACE',
   'SPARSE_GEMM_TRACE',
+  'CUSTOM_TRACE',
 ];
 
 export type PortDirection = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'LOCAL';

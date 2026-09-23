@@ -4,7 +4,10 @@ import {
   BenchmarkComparisonData,
   WorkloadSensitivityItem,
 } from '@shared/types/noc';
+import { SweepEngine } from '@shared/engine/sweepEngine';
+import type { TraceEvent } from '@shared/engine/realTraces';
 import { runSensitivitySweep, runSweep } from './api/client';
+import { parseTraceFile } from './utils/traceParser';
 import { useLocalSimulation } from './sim/useLocalSimulation';
 import { Header } from './components/Header';
 import { ArchitectureDiagram } from './components/ArchitectureDiagram';
@@ -50,6 +53,13 @@ export default function App() {
   const [isSweeping, setIsSweeping] = useState(false);
   const [sweepError, setSweepError] = useState<string | null>(null);
 
+  // CUSTOM_TRACE: a user-uploaded trace file, kept in browser memory only
+  // (never sent to the server) -- events feed the live sim directly, and
+  // the Benchmarks-tab sweep for it runs client-side too, since a server
+  // function has no way to see a file that was never uploaded to it.
+  const [customTraceEvents, setCustomTraceEventsState] = useState<TraceEvent[] | null>(null);
+  const [customTraceStatus, setCustomTraceStatus] = useState<{ text: string; isError: boolean } | null>(null);
+
   const {
     connected,
     isRunning,
@@ -64,6 +74,7 @@ export default function App() {
     reset,
     setSpeed,
     updateConfig: sendConfigUpdate,
+    setCustomTrace,
   } = useLocalSimulation(DEFAULT_CONFIG);
 
   const handleStepCycle = useCallback((cycles: number) => step(cycles), [step]);
@@ -78,10 +89,55 @@ export default function App() {
     [sendConfigUpdate]
   );
 
+  const handleUploadTrace = useCallback(
+    async (file: File) => {
+      try {
+        const text = await file.text();
+        const result = parseTraceFile(file.name, text);
+        setCustomTraceEventsState(result.events);
+        setCustomTraceStatus({
+          text: `Loaded ${result.events.length} events from ${file.name} — ${result.sourceNodeCount} source nodes, span ${result.spanCycles} cycles.`,
+          isError: false,
+        });
+        setCustomTrace(result.events);
+        handleUpdateConfig({ workloadType: 'CUSTOM_TRACE' });
+        setBenchmarkData(null); // stale sweep would otherwise still show the previous trace/workload's numbers
+      } catch (err) {
+        setCustomTraceEventsState(null);
+        setCustomTraceStatus({
+          text: err instanceof Error ? err.message : 'Could not read file.',
+          isError: true,
+        });
+      }
+    },
+    [setCustomTrace, handleUpdateConfig]
+  );
+
   const handleRunSweep = useCallback(() => {
     setIsSweeping(true);
     setSweepError(null);
     setActiveTab('benchmarks');
+
+    if (config.workloadType === 'CUSTOM_TRACE') {
+      if (!customTraceEvents) {
+        setSweepError('Upload a trace file first (Workload selector → CUSTOM_TRACE).');
+        setIsSweeping(false);
+        return;
+      }
+      // Runs entirely in-browser: the uploaded trace only exists in this
+      // tab's memory, so the server has nothing to sweep against.
+      Promise.resolve()
+        .then(() => SweepEngine.runMultiModeSweep(config, undefined, undefined, customTraceEvents))
+        .then((sweepData) => {
+          setBenchmarkData(sweepData);
+          setWorkloadSensitivity(null); // the sensitivity matrix compares 5 fixed synthetic workloads, not the uploaded trace
+        })
+        .catch((err) => {
+          setSweepError(err instanceof Error ? err.message : 'Sweep failed');
+        })
+        .finally(() => setIsSweeping(false));
+      return;
+    }
 
     Promise.all([runSweep(config), runSensitivitySweep(config)])
       .then(([sweepData, sensitivity]) => {
@@ -92,7 +148,7 @@ export default function App() {
         setSweepError(err instanceof Error ? err.message : 'Sweep failed');
       })
       .finally(() => setIsSweeping(false));
-  }, [config]);
+  }, [config, customTraceEvents]);
 
   const selectedRouter = selectedRouterId !== null ? routers.get(selectedRouterId) || null : null;
 
@@ -122,6 +178,8 @@ export default function App() {
         onSetActiveTab={setActiveTab}
         onOpenCodeExport={() => setIsCodeExportOpen(true)}
         onRunSweep={handleRunSweep}
+        onUploadTrace={handleUploadTrace}
+        customTraceStatus={customTraceStatus}
       />
 
       {/* Main Content Area */}

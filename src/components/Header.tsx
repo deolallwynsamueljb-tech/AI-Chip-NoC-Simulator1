@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Play,
   Pause,
@@ -10,6 +10,7 @@ import {
   Code2,
   Sparkles,
   Zap,
+  Upload,
 } from 'lucide-react';
 import { NoCConfig, RoutingMode, WorkloadType } from '@shared/types/noc';
 
@@ -28,6 +29,8 @@ interface HeaderProps {
   onSetActiveTab: (tab: 'simulator' | 'benchmarks' | 'research') => void;
   onOpenCodeExport: () => void;
   onRunSweep: () => void;
+  onUploadTrace: (file: File) => void;
+  customTraceStatus: { text: string; isError: boolean } | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -45,7 +48,10 @@ export const Header: React.FC<HeaderProps> = ({
   onSetActiveTab,
   onOpenCodeExport,
   onRunSweep,
+  onUploadTrace,
+  customTraceStatus,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 shadow-sm text-[var(--text-primary)]">
       {/* Top Main Title & Metadata Bar */}
@@ -232,7 +238,36 @@ export const Header: React.FC<HeaderProps> = ({
                 <option value="BERT_TRACE">BERT_TRACE (Real recorded trace, 4x4)</option>
                 <option value="GEMM_TRACE">GEMM_TRACE (Real recorded trace, 4x4)</option>
                 <option value="SPARSE_GEMM_TRACE">SPARSE_GEMM_TRACE (Real recorded trace, 4x4)</option>
+                <option value="CUSTOM_TRACE">CUSTOM_TRACE (Upload your own, 4x4)</option>
               </select>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.json,application/json,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUploadTrace(file);
+                  e.target.value = ''; // allow re-uploading the same filename
+                }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title={
+                  customTraceStatus?.text ??
+                  'Upload a trace file (CSV or JSON) to replay as CUSTOM_TRACE — requires a 4x4 mesh'
+                }
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono ${
+                  customTraceStatus?.isError
+                    ? 'border-red-500/60 text-red-400 hover:bg-red-950/40'
+                    : customTraceStatus
+                    ? 'border-emerald-500/60 text-emerald-400 hover:bg-emerald-950/40'
+                    : 'border-[var(--border-subtle)] text-slate-400 hover:text-white hover:bg-[#21262d]'
+                }`}
+              >
+                <Upload className="w-3 h-3" />
+                {customTraceStatus ? (customTraceStatus.isError ? 'Invalid file' : 'Loaded') : 'Upload trace'}
+              </button>
             </div>
 
             {/* Routing Mode */}

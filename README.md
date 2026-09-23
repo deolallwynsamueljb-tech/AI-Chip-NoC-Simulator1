@@ -22,7 +22,13 @@ rather than one forced-together codebase:
   hotspot, bit-complement) **and** replays the same real AI-workload traces
   the Python engine validated against (`RESNET18_TRACE` / `BERT_TRACE` /
   `GEMM_TRACE` / `SPARSE_GEMM_TRACE` in the Workload selector, sourced
-  straight from `research-engine/traces/*.csv`). Its self-reconfiguring
+  straight from `research-engine/traces/*.csv`), plus a `CUSTOM_TRACE`
+  option that lets you upload your own trace (CSV -- either the simplified
+  `cycle,srcId,dstId,sizeBytes` columns or `research-engine`'s own
+  `inject_cycle,src,dst,size_bytes` columns -- or JSON matching the bundled
+  trace format) and get live simulation plus a real Benchmarks-tab sweep
+  against it, entirely in the browser (the file never leaves your tab).
+  Requires a 4x4 mesh, same as the built-in traces. Its self-reconfiguring
   controller uses the same hysteresis + dwell-time safeguards as the Python
   one, ported over after the Python engine's experiments showed naive
   per-epoch switching thrashes.

@@ -39,8 +39,13 @@ export function traceDim(): number {
   return TRACE_DIM;
 }
 
-export function traceSpanCycles(workload: WorkloadType): number {
-  const events = REAL_TRACES[workload];
+/** Span (in cycles) of an arbitrary event list -- shared by built-in
+ * traces (via traceSpanCycles) and CUSTOM_TRACE's uploaded events. */
+export function spanCyclesForEvents(events: TraceEvent[]): number {
   if (!events || events.length === 0) return 0;
   return events[events.length - 1].cycle + 1;
+}
+
+export function traceSpanCycles(workload: WorkloadType): number {
+  return spanCyclesForEvents(REAL_TRACES[workload] ?? []);
 }

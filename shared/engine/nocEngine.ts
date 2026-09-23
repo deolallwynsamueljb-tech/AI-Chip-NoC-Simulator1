@@ -13,6 +13,7 @@ import {
 import { getEnergyParameters } from './energyModel.js';
 import { RoutingEngine } from './routingAlgorithms.js';
 import { TrafficGenerator } from './trafficGenerators.js';
+import { TraceEvent } from './realTraces.js';
 
 export class NoCSimulator {
   private config: NoCConfig;
@@ -151,6 +152,11 @@ export class NoCSimulator {
       });
       this.telemetry.controllerActiveMode = newConfig.routingMode;
     }
+  }
+
+  /** Loads a user-uploaded trace for the CUSTOM_TRACE workload. */
+  public setCustomTrace(events: TraceEvent[]): void {
+    this.trafficGen.setCustomTraceEvents(events);
   }
 
   private initializeTopology() {

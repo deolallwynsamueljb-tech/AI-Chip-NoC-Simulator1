@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Link, NoCConfig, SerializedRouterNode, SimulationMetrics, WorkloadTelemetry } from '@shared/types/noc';
 import { NoCSimulator } from '@shared/engine/nocEngine';
+import type { TraceEvent } from '@shared/engine/realTraces';
 import { buildSnapshot } from '@shared/serialize';
 
 export interface UseLocalSimulationResult {
@@ -17,6 +18,7 @@ export interface UseLocalSimulationResult {
   reset: () => void;
   setSpeed: (speed: number) => void;
   updateConfig: (partial: Partial<NoCConfig>) => void;
+  setCustomTrace: (events: TraceEvent[]) => void;
 }
 
 const TICK_MS = 30;
@@ -101,6 +103,15 @@ export function useLocalSimulation(config: NoCConfig | null): UseLocalSimulation
     [publishSnapshot]
   );
 
+  const setCustomTrace = useCallback(
+    (events: TraceEvent[]) => {
+      if (!simRef.current) return;
+      simRef.current.setCustomTrace(events);
+      publishSnapshot();
+    },
+    [publishSnapshot]
+  );
+
   return {
     connected,
     isRunning,
@@ -115,5 +126,6 @@ export function useLocalSimulation(config: NoCConfig | null): UseLocalSimulation
     reset,
     setSpeed: setSpeedState,
     updateConfig,
+    setCustomTrace,
   };
 }
