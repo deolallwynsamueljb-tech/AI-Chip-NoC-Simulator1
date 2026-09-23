@@ -1,5 +1,5 @@
-import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc';
-import { NoCSimulator } from './nocEngine';
+import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc.js';
+import { NoCSimulator } from './nocEngine.js';
 
 export class SweepEngine {
   public static readonly DEFAULT_RATES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60];
@@ -12,7 +12,7 @@ export class SweepEngine {
     injectionRates: number[] = SweepEngine.DEFAULT_RATES,
     cyclesPerPoint: number = 500
   ): BenchmarkComparisonData {
-    const algorithms: RoutingMode[] = [
+    const algorithms: (keyof BenchmarkComparisonData['results'])[] = [
       'BASELINE_XY',
       'ADAPTIVE_DYXY',
       'CONGESTION_AWARE_RCA',

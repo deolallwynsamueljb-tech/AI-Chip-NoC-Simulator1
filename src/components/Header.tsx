@@ -249,6 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <option value="ADAPTIVE_DYXY">Adaptive: DyXY Routing</option>
                 <option value="CONGESTION_AWARE_RCA">Congestion-Aware: RCA</option>
                 <option value="LOW_POWER_BYPASS">Low-Power: Bypass &amp; Gating</option>
+                <option value="TASK_BASED_TBP">Task-Based: TB-TBP (VC Partition)</option>
               </select>
             </div>
 

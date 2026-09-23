@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { NoCConfig } from '../shared/types/noc';
-import { SweepEngine } from '../shared/engine/sweepEngine';
+import type { NoCConfig } from '../shared/types/noc.js';
+import { SweepEngine } from '../shared/engine/sweepEngine.js';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

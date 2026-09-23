@@ -1,9 +1,10 @@
-export type RoutingMode = 
+export type RoutingMode =
   | 'BASELINE_XY'
   | 'ADAPTIVE_DYXY'
   | 'CONGESTION_AWARE_RCA'
   | 'LOW_POWER_BYPASS'
-  | 'PROPOSED_RECONFIGURABLE';
+  | 'PROPOSED_RECONFIGURABLE'
+  | 'TASK_BASED_TBP';
 
 export type WorkloadType =
   | 'CNN_LOCAL'
@@ -140,6 +141,9 @@ export interface WorkloadTelemetry {
   confidenceScore: number;
   reconfigurationCount: number;
   controllerOverheadEnergyPJ: number;
+  /** Only meaningful when routingMode is TASK_BASED_TBP: which of the two
+   * VC-partitioning policies is currently active (null otherwise). */
+  taskBasedActivePolicy: 'TB' | 'TBP' | null;
   history: {
     cycle: number;
     detectedPattern: string;

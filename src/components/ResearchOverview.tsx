@@ -192,6 +192,48 @@ export const ResearchOverview: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* 5. Related Work: TB-TBP-inspired routing mode */}
+      <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-2">
+        <h3 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <BookOpen className="w-3.5 h-3.5 text-orange-400" />
+          Related Work: Task-Based / TB-TBP Routing (new selectable mode)
+        </h3>
+        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+          Fang, Wei, Liu &amp; Hou, &quot;TB-TBP: a task-based adaptive routing algorithm for network-on-chip in
+          heterogenous CPU-GPU architectures,&quot; <em>J. Supercomput</em> 80, 6311&ndash;6335 (2024). Their setting is
+          CPU/GPU/LLC/MC request-vs-reply traffic on a specific placement model this simulator doesn&apos;t have, so{' '}
+          <strong className="text-orange-400">Task-Based: TB-TBP</strong> in the Routing selector keeps only the two
+          ideas that actually transfer:
+        </p>
+        <ol className="list-decimal list-inside text-[9px] font-mono text-slate-400 space-y-1 leading-relaxed">
+          <li>
+            Each flow is fixed at creation (from its own src/dst endpoints, never re-decided mid-flight) to either an
+            X-first or a Y-first dimension-order route &mdash; each class alone is a standard deadlock-free route, and
+            splitting flows between the two spreads load instead of every flow sharing one X-then-Y convention.
+          </li>
+          <li>
+            The controller switches between sharing VCs across both classes (&quot;TB&quot;, low overhead) and giving
+            each class a dedicated VC (&quot;TBP&quot;, no head-of-line blocking between classes) using a measured
+            network-congestion threshold plus this project&apos;s own hysteresis/dwell-time safeguard &mdash; in place
+            of the paper&apos;s CPU-retired-instruction speedup ratio, which requires a CPU core model this simulator
+            doesn&apos;t implement.
+          </li>
+        </ol>
+        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+          This mode is directly selectable and fully live-simulated (Router Inspector shows the active TB/TBP policy
+          per epoch); it is <em>not</em> currently included in the Benchmarks-tab sweep matrix or code export.
+        </p>
+        <div className="bg-[var(--bg-surface)] border border-amber-500/30 rounded p-2.5 font-mono text-[9px] text-slate-300 leading-relaxed">
+          <strong className="text-amber-400">Honest result, tested not assumed:</strong> under sustained heavy
+          global/bursty traffic (e.g. Transformer at high injection rate) this mode&apos;s delivery ratio drops well
+          below Baseline-XY&apos;s &mdash; but so do this simulator&apos;s existing Adaptive-DyXY and Congestion-Aware
+          RCA modes under the identical stress test (in one measured run: XY 99.6%, DyXY 70.5%, RCA 63.9%, TB-TBP
+          88.3%). This is a property of this simulator&apos;s single fixed-priority (non-round-robin) switch
+          arbitration under any non-monolithic routing, not something specific to or worse for TB-TBP &mdash; it is
+          not claimed to be deadlock-free either, the same honest caveat already given for DyAD above.
+        </div>
+      </div>
     </div>
   );
 };

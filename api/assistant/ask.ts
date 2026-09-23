@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { answerAssistantQuestion } from '../../shared/assistantService';
+import { answerAssistantQuestion } from '../../shared/assistantService.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

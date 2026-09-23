@@ -1,4 +1,4 @@
-import { Flit, NoCConfig, PortDirection, RouterNode, RoutingMode } from '../types/noc';
+import { Flit, NoCConfig, PortDirection, RouterNode, RoutingMode } from '../types/noc.js';
 
 export interface RouteDecision {
   nextPort: PortDirection;
@@ -18,7 +18,8 @@ export class RoutingEngine {
     currentRouter: RouterNode,
     allRouters: Map<number, RouterNode>,
     config: NoCConfig,
-    activeMode: RoutingMode
+    activeMode: RoutingMode,
+    taskBasedPolicy: 'TB' | 'TBP' = 'TB'
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
@@ -47,6 +48,9 @@ export class RoutingEngine {
 
       case 'LOW_POWER_BYPASS':
         return this.computeLowPowerBypass(flit, currentRouter, allRouters, config);
+
+      case 'TASK_BASED_TBP':
+        return this.computeTaskBasedTBP(flit, currentRouter, config, taskBasedPolicy);
 
       case 'PROPOSED_RECONFIGURABLE':
       default:
@@ -290,5 +294,81 @@ export class RoutingEngine {
         reason: 'Low-Power Bypass: Direct Y-traversal with minimal switching logic',
       };
     }
+  }
+
+  /**
+   * 5. Task-Based / Task-Based-Partition Adaptive Routing (TB-TBP)
+   *
+   * Adapted from Fang, Wei, Liu & Hou, "TB-TBP: a task-based adaptive
+   * routing algorithm for network-on-chip in heterogenous CPU-GPU
+   * architectures" (J. Supercomput 80, 2024). That paper's algorithm
+   * routes CPU/GPU/LLC/MC request-vs-reply traffic along XY vs YX
+   * dimension order and dynamically partitions them into separate VCs
+   * under high load. This simulator has no CPU/GPU/LLC/MC role model to
+   * copy that split onto directly, so this keeps the two ideas that do
+   * transfer:
+   *
+   *   1. Split flows into two disjoint dimension-order classes (X-first
+   *      vs Y-first) by a fixed per-flow property decided once from the
+   *      flow's own endpoints (not re-decided per hop, and not random) --
+   *      each class alone is a standard deadlock-free dimension-order
+   *      route, and splitting traffic between them spreads load instead
+   *      of concentrating every flow on X-then-Y.
+   *   2. Dynamically choose whether the two classes share virtual
+   *      channels ("TB": lower overhead, matches the paper's low-load
+   *      case) or get one dedicated VC each ("TBP": no head-of-line
+   *      blocking between classes, matches the paper's high-load case),
+   *      using this project's own congestion-threshold + hysteresis +
+   *      dwell-time controller (see runWorkloadAnalyzerAndController in
+   *      nocEngine.ts) in place of the paper's CPU-retired-instruction
+   *      speedup ratio, which this simulator has no CPU model to compute.
+   */
+  public static computeTaskBasedTBP(
+    flit: Flit,
+    currentRouter: RouterNode,
+    config: NoCConfig,
+    activePolicy: 'TB' | 'TBP'
+  ): RouteDecision {
+    const { x: curX, y: curY } = currentRouter;
+    const { srcX, srcY, dstX, dstY } = flit;
+
+    // Fixed per-flow class derived from endpoints alone, so every hop of
+    // the same flow agrees on X-first vs Y-first.
+    const xFirst = (srcX + srcY + dstX + dstY) % 2 === 0;
+
+    let nextPort: PortDirection;
+    let nextX = curX;
+    let nextY = curY;
+
+    const takeXStep = () => {
+      nextPort = curX < dstX ? 'EAST' : 'WEST';
+      nextX = curX < dstX ? curX + 1 : curX - 1;
+    };
+    const takeYStep = () => {
+      nextPort = curY < dstY ? 'SOUTH' : 'NORTH';
+      nextY = curY < dstY ? curY + 1 : curY - 1;
+    };
+
+    if (xFirst) {
+      if (curX !== dstX) takeXStep();
+      else takeYStep();
+    } else {
+      if (curY !== dstY) takeYStep();
+      else takeXStep();
+    }
+
+    const partitioned = activePolicy === 'TBP' && config.virtualChannels >= 2;
+    const selectedVC = partitioned ? (xFirst ? 0 : 1) : (flit.currentVC + 1) % config.virtualChannels;
+
+    return {
+      nextPort: nextPort!,
+      nextX,
+      nextY,
+      selectedVC,
+      algorithmUsed: 'TASK_BASED_TBP',
+      reason: `TB-TBP (${activePolicy}): ${xFirst ? 'X-first' : 'Y-first'} class -> ${nextPort!}${
+        partitioned ? ` on dedicated VC${selectedVC}` : ' (shared VC)'
+      }`,
+    };
   }
 }

@@ -1,5 +1,5 @@
-import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../types/noc';
-import { REAL_TRACES, traceDim, traceSpanCycles } from './realTraces';
+import { NoCConfig, WorkloadType, TRACE_WORKLOAD_TYPES } from '../types/noc.js';
+import { REAL_TRACES, traceDim, traceSpanCycles } from './realTraces.js';
 
 export interface TrafficTarget {
   dstX: number;

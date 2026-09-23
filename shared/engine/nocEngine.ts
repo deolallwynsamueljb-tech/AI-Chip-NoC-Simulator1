@@ -9,10 +9,10 @@ import {
   SimulationMetrics,
   WorkloadTelemetry,
   WorkloadType,
-} from '../types/noc';
-import { getEnergyParameters } from './energyModel';
-import { RoutingEngine } from './routingAlgorithms';
-import { TrafficGenerator } from './trafficGenerators';
+} from '../types/noc.js';
+import { getEnergyParameters } from './energyModel.js';
+import { RoutingEngine } from './routingAlgorithms.js';
+import { TrafficGenerator } from './trafficGenerators.js';
 
 export class NoCSimulator {
   private config: NoCConfig;
@@ -56,6 +56,14 @@ export class NoCSimulator {
   private pendingCount = 0;
   private lastReconfigCycle = -Infinity;
 
+  // TASK_BASED_TBP's own TB<->TBP hysteresis/dwell state (see
+  // routingAlgorithms.ts computeTaskBasedTBP for what these mean).
+  private taskBasedActivePolicy: 'TB' | 'TBP' = 'TB';
+  private taskBasedPendingPolicy: 'TB' | 'TBP' | null = null;
+  private taskBasedPendingCount = 0;
+  private taskBasedLastSwitchCycle = -Infinity;
+  private static readonly TASK_BASED_TBP_LOAD_THRESHOLD = 0.15;
+
   constructor(config: NoCConfig) {
     this.config = config;
     this.trafficGen = new TrafficGenerator(config);
@@ -69,6 +77,7 @@ export class NoCSimulator {
       confidenceScore: 0, // no classification epoch has run yet
       reconfigurationCount: 0,
       controllerOverheadEnergyPJ: 0,
+      taskBasedActivePolicy: null,
       history: [],
     };
     this.initializeTopology();
@@ -94,6 +103,10 @@ export class NoCSimulator {
     this.pendingMode = null;
     this.pendingCount = 0;
     this.lastReconfigCycle = -Infinity;
+    this.taskBasedActivePolicy = 'TB';
+    this.taskBasedPendingPolicy = null;
+    this.taskBasedPendingCount = 0;
+    this.taskBasedLastSwitchCycle = -Infinity;
     this.accumulatedEnergy = {
       staticLeakage: 0,
       bufferDynamic: 0,
@@ -111,6 +124,7 @@ export class NoCSimulator {
       confidenceScore: 0, // no classification epoch has run yet
       reconfigurationCount: 0,
       controllerOverheadEnergyPJ: 0,
+      taskBasedActivePolicy: null,
       history: [],
     };
     this.initializeTopology();
@@ -452,6 +466,40 @@ export class NoCSimulator {
           r.controllerDecisions.pop();
         }
       });
+    } else if (routingMode === 'TASK_BASED_TBP') {
+      // TB-TBP's own switch, independent of the PROPOSED_RECONFIGURABLE
+      // controller above: pick TB vs TBP from measured network congestion
+      // against a fixed threshold (this simulator has no CPU retired-
+      // instruction signal to compute the paper's speedup ratio from),
+      // guarded by the same hysteresis/dwell safeguards.
+      const candidatePolicy: 'TB' | 'TBP' =
+        avgCongestion >= NoCSimulator.TASK_BASED_TBP_LOAD_THRESHOLD ? 'TBP' : 'TB';
+
+      if (candidatePolicy === this.taskBasedActivePolicy) {
+        this.taskBasedPendingPolicy = null;
+        this.taskBasedPendingCount = 0;
+        reconfigReason = 'already_active';
+      } else {
+        if (candidatePolicy === this.taskBasedPendingPolicy) {
+          this.taskBasedPendingCount++;
+        } else {
+          this.taskBasedPendingPolicy = candidatePolicy;
+          this.taskBasedPendingCount = 1;
+        }
+
+        if (this.taskBasedPendingCount < this.config.hysteresisWindows) {
+          reconfigReason = `hysteresis_wait(${this.taskBasedPendingCount}/${this.config.hysteresisWindows})`;
+        } else if (this.currentCycle - this.taskBasedLastSwitchCycle < this.config.dwellCycles) {
+          reconfigReason = 'dwell_time_block';
+        } else {
+          this.taskBasedActivePolicy = candidatePolicy;
+          this.taskBasedLastSwitchCycle = this.currentCycle;
+          this.taskBasedPendingCount = 0;
+          this.taskBasedPendingPolicy = null;
+          this.reconfigurationCounter++;
+          reconfigReason = 'applied';
+        }
+      }
     }
 
     // Push to global controller decision log
@@ -476,6 +524,7 @@ export class NoCSimulator {
       confidenceScore: classificationConfidence,
       reconfigurationCount: this.reconfigurationCounter,
       controllerOverheadEnergyPJ: this.accumulatedEnergy.controllerDynamic,
+      taskBasedActivePolicy: routingMode === 'TASK_BASED_TBP' ? this.taskBasedActivePolicy : null,
       history: [...this.decisionHistory],
     };
 
@@ -560,7 +609,8 @@ export class NoCSimulator {
               router,
               this.routers,
               this.config,
-              router.currentMode
+              router.currentMode,
+              this.taskBasedActivePolicy
             );
 
             const outPort = decision.nextPort;

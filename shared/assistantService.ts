@@ -1,4 +1,4 @@
-import type { NoCConfig, SimulationMetrics, WorkloadTelemetry } from './types/noc';
+import type { NoCConfig, SimulationMetrics, WorkloadTelemetry } from './types/noc.js';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 

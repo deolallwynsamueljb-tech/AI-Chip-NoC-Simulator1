@@ -53,6 +53,8 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
           return 'bg-purple-950/70 border-purple-500/60 text-purple-300';
         case 'LOW_POWER_BYPASS':
           return 'bg-cyan-950/70 border-cyan-500/60 text-cyan-300';
+        case 'TASK_BASED_TBP':
+          return 'bg-orange-950/70 border-orange-500/60 text-orange-300';
         default:
           return 'bg-emerald-900/50 border-emerald-400 text-emerald-200';
       }
@@ -158,6 +160,8 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   ? 'DyXY'
                   : router.currentMode === 'CONGESTION_AWARE_RCA'
                   ? 'RCA'
+                  : router.currentMode === 'TASK_BASED_TBP'
+                  ? 'TBP'
                   : 'LP';
 
               const tileClasses = getTileStyle(router, occupancyPct);

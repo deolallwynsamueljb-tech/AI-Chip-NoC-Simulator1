@@ -1,4 +1,4 @@
-import { NoCConfig } from '../types/noc';
+import { NoCConfig } from '../types/noc.js';
 
 /**
  * Architecture-level NoC energy/power model, parameterized by technology
