@@ -75,6 +75,23 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
         1
       )}% for proposed, under ${faults.faultyRouterIds.length} faulty router(s) and ${faults.faultyLinkKeys.length / 2} faulty link(s).`;
     }
+
+    // EDP = Total Energy x Average Latency, so it mechanically rises when
+    // an architecture accepts and delivers more total traffic at the same
+    // offered injection rate -- that's more work actually done, not pure
+    // inefficiency. Surface that context whenever it's the likely
+    // explanation, instead of leaving a bare "EDP regressed" reading as an
+    // unqualified downside.
+    if (improvement.edpPct < 0 && improvement.throughputPct > 5) {
+      sentence += ` Note: EDP is Total Energy x Average Latency, so it rises mechanically when more traffic is actually delivered -- proposed delivered ${proposed.metrics.totalDeliveredFlits.toLocaleString()} flits here vs conventional's ${baseline.metrics.totalDeliveredFlits.toLocaleString()} (+${(
+        ((proposed.metrics.totalDeliveredFlits - baseline.metrics.totalDeliveredFlits) /
+          Math.max(1, baseline.metrics.totalDeliveredFlits)) *
+        100
+      ).toFixed(0)}%), so part of this EDP gap reflects doing more work, not less efficiency per flit (energy per flit: ${proposed.metrics.energyPerFlitPJ.toFixed(
+        2
+      )} pJ proposed vs ${baseline.metrics.energyPerFlitPJ.toFixed(2)} pJ conventional).`;
+    }
+
     return sentence;
   }, [result]);
 
