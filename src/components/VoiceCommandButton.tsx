@@ -22,9 +22,10 @@ interface VoiceCommandButtonProps {
   onRunSweep: () => void;
 }
 
-type RecState = 'idle' | 'recording' | 'processing' | 'error';
+type RecState = 'idle' | 'starting' | 'recording' | 'processing' | 'error';
 
 const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+const MAX_RECORDING_MS = 15000;
 
 function pickSupportedMimeType(): string {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -97,6 +98,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const executeAction = useCallback(
     (action: VoiceAction) => {
@@ -149,8 +151,20 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
     streamRef.current = null;
   }, []);
 
+  const clearAutoStopTimer = useCallback(() => {
+    if (autoStopTimerRef.current) {
+      clearTimeout(autoStopTimerRef.current);
+      autoStopTimerRef.current = null;
+    }
+  }, []);
+
+  // Click-to-toggle, not press-and-hold: getUserMedia (and the permission
+  // prompt it can show) is async, so a quick tap would otherwise fire the
+  // "stop" handler before "start" finished setting up the recorder -- a
+  // real race that made the button silently do nothing on a normal click.
+  // Two deliberate, separately-timed clicks have no such race.
   const startRecording = useCallback(async () => {
-    if (state !== 'idle') return;
+    if (state !== 'idle' && state !== 'error') return;
     setFeedback(null);
 
     const mimeType = pickSupportedMimeType();
@@ -159,6 +173,8 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
       setFeedback({ transcript: '', text: 'Voice recording is not supported in this browser.', isError: true });
       return;
     }
+
+    setState('starting');
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -170,11 +186,12 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = async () => {
+        clearAutoStopTimer();
         stopStream();
         const blob = new Blob(chunksRef.current, { type: mimeType });
         if (blob.size < 500) {
           setState('idle');
-          setFeedback({ transcript: '', text: 'Recording was too short — hold the button while speaking.', isError: true });
+          setFeedback({ transcript: '', text: 'Recording was too short — click, speak, then click again.', isError: true });
           return;
         }
 
@@ -202,20 +219,28 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
       mediaRecorderRef.current = recorder;
       recorder.start();
       setState('recording');
+      autoStopTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+      }, MAX_RECORDING_MS);
     } catch {
       setState('error');
       setFeedback({ transcript: '', text: 'Microphone access was denied.', isError: true });
     }
-  }, [state, activeTab, config, executeAction, stopStream]);
+  }, [state, activeTab, config, executeAction, stopStream, clearAutoStopTimer]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-    } else {
-      stopStream();
-      if (state === 'recording') setState('idle');
     }
-  }, [state, stopStream]);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (state === 'idle' || state === 'error') startRecording();
+    else if (state === 'recording') stopRecording();
+    // 'starting' / 'processing': ignore clicks until that settles.
+  }, [state, startRecording, stopRecording]);
 
   return (
     <div className="fixed bottom-5 left-5 z-40 flex flex-col items-start gap-2">
@@ -236,30 +261,31 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
       )}
 
       <button
-        onPointerDown={(e) => {
-          e.preventDefault();
-          startRecording();
-        }}
-        onPointerUp={stopRecording}
-        onPointerLeave={() => state === 'recording' && stopRecording()}
-        disabled={state === 'processing'}
-        title="Hold to speak a voice command"
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm shadow-lg transition-colors select-none touch-none ${
+        onClick={handleClick}
+        disabled={state === 'processing' || state === 'starting'}
+        title="Click to start/stop a voice command"
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm shadow-lg transition-colors select-none ${
           state === 'recording'
             ? 'bg-red-600 text-white animate-pulse'
-            : state === 'processing'
+            : state === 'processing' || state === 'starting'
             ? 'bg-slate-700 text-slate-300 cursor-wait'
             : 'bg-emerald-600 hover:bg-emerald-500 text-black'
         }`}
       >
-        {state === 'processing' ? (
+        {state === 'processing' || state === 'starting' ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : state === 'recording' ? (
           <Square className="w-4 h-4 fill-white" />
         ) : (
           <Mic className="w-4 h-4" />
         )}
-        {state === 'recording' ? 'Listening… release to send' : state === 'processing' ? 'Thinking…' : 'Hold to speak'}
+        {state === 'recording'
+          ? 'Listening… click to send'
+          : state === 'starting'
+          ? 'Starting…'
+          : state === 'processing'
+          ? 'Thinking…'
+          : 'Click to speak'}
       </button>
     </div>
   );
