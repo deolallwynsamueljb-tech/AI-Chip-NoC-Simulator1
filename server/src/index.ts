@@ -3,13 +3,16 @@ import path from 'node:path';
 import express from 'express';
 import { router } from './routes';
 import { assistantRouter } from './assistant';
+import { voiceRouter } from './voice';
 
 const PORT = Number(process.env.PORT) || 8787;
 
 const app = express();
-app.use(express.json());
+// Default 100kb JSON limit is too small for a base64-encoded voice clip.
+app.use(express.json({ limit: '10mb' }));
 app.use('/api', router);
 app.use('/api/assistant', assistantRouter);
+app.use('/api/voice', voiceRouter);
 
 // Production: this same process also serves the built frontend bundle.
 // Both `dist/` (vite build) and the bundled `server.js` (esbuild) land at

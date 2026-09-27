@@ -5,6 +5,7 @@ import type {
   WorkloadSensitivityItem,
   WorkloadTelemetry,
 } from '@shared/types/noc';
+import type { VoiceCommandSuccess } from '@shared/types/voice';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -40,5 +41,13 @@ export function askAssistant(question: string, config: NoCConfig, metrics: Simul
   return request<{ answer: string }>('/assistant/ask', {
     method: 'POST',
     body: JSON.stringify({ question, config, metrics, telemetry }),
+  });
+}
+
+/** Transcribes a recorded voice command and resolves it to a UI action, grounded in the live config/tab. */
+export function executeVoiceCommand(audioBase64: string, mimeType: string, activeTab: string, config: NoCConfig) {
+  return request<VoiceCommandSuccess>('/voice/execute', {
+    method: 'POST',
+    body: JSON.stringify({ audioBase64, mimeType, activeTab, config }),
   });
 }

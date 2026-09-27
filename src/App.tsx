@@ -25,6 +25,7 @@ import { ResearchOverview } from './components/ResearchOverview';
 import { AssistantPanel } from './components/AssistantPanel';
 import { ConfigurationPanel } from './components/ConfigurationPanel';
 import { ArchitectureComparisonView } from './components/ArchitectureComparisonView';
+import { VoiceCommandButton } from './components/VoiceCommandButton';
 
 const DEFAULT_CONFIG: NoCConfig = {
   meshWidth: 4,
@@ -320,6 +321,22 @@ export default function App() {
 
       {/* AI Assistant (Groq-backed, grounded in live simulation state) */}
       <AssistantPanel config={config} metrics={metrics} telemetry={telemetry} />
+
+      {/* Voice control (Groq Whisper + LLM intent, server-side only) */}
+      <VoiceCommandButton
+        activeTab={activeTab}
+        config={config}
+        onUpdateConfig={handleUpdateConfig}
+        onSetActiveTab={setActiveTab}
+        onPlay={play}
+        onPause={pause}
+        onTogglePlay={handleTogglePlay}
+        onReset={handleReset}
+        onStepCycle={handleStepCycle}
+        onRunComparison={handleRunComparison}
+        onRunFaultSweep={handleRunFaultSweep}
+        onRunSweep={handleRunSweep}
+      />
     </div>
   );
 }
