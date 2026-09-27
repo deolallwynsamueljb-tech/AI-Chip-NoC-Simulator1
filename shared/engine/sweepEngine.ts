@@ -22,7 +22,14 @@ export class SweepEngine {
   public static runMultiModeSweep(
     baseConfig: NoCConfig,
     injectionRates: number[] = SweepEngine.DEFAULT_RATES,
-    cyclesPerPoint: number = 500,
+    // 2000 (not 500): tail-latency percentiles (P95/P99) are noisy with few
+    // samples -- at 500 cycles a sweep point often only delivers a few dozen
+    // packets, so its "top 1%" is a single packet and swings wildly between
+    // runs (observed: the same config's P99 delta ranged from -18% to +57%
+    // across 8 runs at 500 cycles, vs +3.6% to +16.7% at 3000). 2000 lands
+    // in a statistically stable range while keeping the full 12-point x
+    // 5-algorithm sweep at ~5s, not so long it hurts responsiveness.
+    cyclesPerPoint: number = 2000,
     customTraceEvents?: TraceEvent[]
   ): BenchmarkComparisonData {
     const algorithms: (keyof BenchmarkComparisonData['results'])[] = [
@@ -149,7 +156,7 @@ export class SweepEngine {
   public static runFaultRateSweep(
     baseConfig: NoCConfig,
     faultRates: number[] = [0, 5, 10, 15, 20],
-    cyclesPerPoint: number = 500
+    cyclesPerPoint: number = 2000 // see runMultiModeSweep's comment on why 500 was too noisy
   ): FaultSweepData {
     const results: FaultSweepData['results'] = { BASELINE_XY: [], PROPOSED_RECONFIGURABLE: [] };
 
@@ -190,10 +197,10 @@ export class SweepEngine {
     ];
 
     return workloads.map((w) => {
-      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', 0.35, 400);
-      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', 0.35, 400);
-      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', 0.35, 400);
-      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', 0.35, 400);
+      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', 0.35, 1500);
+      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', 0.35, 1500);
+      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', 0.35, 1500);
+      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', 0.35, 1500);
 
       const latencyReductionPct = ((ptXY.avgLatency - ptProposed.avgLatency) / Math.max(1, ptXY.avgLatency)) * 100;
       const throughputGainPct = ((ptProposed.throughput - ptXY.throughput) / Math.max(0.01, ptXY.throughput)) * 100;
