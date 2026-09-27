@@ -58,11 +58,11 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xs font-bold font-mono text-white uppercase">Router Tile ({x}, {y}) Diagnostic</h3>
-                <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   {currentMode.replace('_', ' ')}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[12px] text-slate-400 font-mono">
                 Total Capacity: {maxCap} flits &bull; Active: {totalFlits} flits
               </p>
             </div>
@@ -78,7 +78,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
 
         {/* 1. Port Queues & VC Breakdown */}
         <div className="space-y-2">
-          <h4 className="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <h4 className="text-[12px] font-bold font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Layers className="w-3 h-3 text-emerald-400" />
             Port Input FIFOs &amp; Virtual Channels
           </h4>
@@ -87,11 +87,11 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
             {directions.map((port) => {
               return (
                 <div key={port} className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)] space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-mono">
+                  <div className="flex items-center justify-between text-[12px] font-mono">
                     <span className="font-semibold text-slate-200 flex items-center gap-1">
                       {dirIcons[port]} {port}
                     </span>
-                    <span className="text-[9px] text-slate-500">
+                    <span className="text-[11px] text-slate-400">
                       Util: {linkUtilization[port]} hops
                     </span>
                   </div>
@@ -106,16 +106,16 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
                       return (
                         <div
                           key={vcId}
-                          className={`p-1 rounded text-[10px] font-mono flex items-center justify-between border ${
+                          className={`p-1 rounded text-[12px] font-mono flex items-center justify-between border ${
                             isGated
-                              ? 'bg-[var(--bg-surface)]/50 border-[var(--border-subtle)] text-slate-600'
+                              ? 'bg-[var(--bg-surface)]/50 border-[var(--border-subtle)] text-slate-400'
                               : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] text-slate-300'
                           }`}
                         >
                           <div className="flex items-center gap-1">
-                            <span className="text-[9px] text-emerald-400 font-bold">VC{vcId}</span>
+                            <span className="text-[11px] text-emerald-400 font-bold">VC{vcId}</span>
                             {isGated && (
-                              <span className="text-[8px] px-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                              <span className="text-[10px] px-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
                                 GATED
                               </span>
                             )}
@@ -138,7 +138,7 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
                                 />
                               );
                             })}
-                            <span className="text-[9px] text-slate-400 ml-1 font-bold">
+                            <span className="text-[11px] text-slate-400 ml-1 font-bold">
                               {flitCount}/{config.bufferDepthPerVC}
                             </span>
                           </div>
@@ -153,19 +153,19 @@ export const RouterInspectorModal: React.FC<RouterInspectorModalProps> = ({
         </div>
 
         {/* 2. Energy & Telemetry */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--border-subtle)] font-mono text-[10px]">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--border-subtle)] font-mono text-[12px]">
           <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
-            <div className="text-[9px] text-slate-500">Total Energy</div>
+            <div className="text-[11px] text-slate-400">Total Energy</div>
             <div className="text-xs font-bold text-white">
               {(energyPJ.bufferDynamic + energyPJ.crossbarDynamic + energyPJ.linkDynamic + energyPJ.staticLeakage).toFixed(2)} pJ
             </div>
           </div>
           <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
-            <div className="text-[9px] text-slate-500">Delivered Flits</div>
+            <div className="text-[11px] text-slate-400">Delivered Flits</div>
             <div className="text-xs font-bold text-emerald-400">{router.totalDelivered}</div>
           </div>
           <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
-            <div className="text-[9px] text-slate-500">Temp Rise</div>
+            <div className="text-[11px] text-slate-400">Temp Rise</div>
             <div className="text-xs font-bold text-amber-400">
               {(router.temperatureRelative * 100).toFixed(0)}&deg;C
             </div>

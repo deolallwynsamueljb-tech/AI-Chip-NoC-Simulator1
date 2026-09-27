@@ -306,7 +306,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#30363d] bg-[#0d1117] py-3 text-center text-[10px] font-mono text-slate-500">
+      <footer className="border-t border-[#30363d] bg-[#0d1117] py-3 text-center text-[10px] font-mono text-slate-400">
         AI Workload-Aware Self-Reconfigurable Mesh Network-on-Chip (NoC) Architecture Platform &bull; Baseline-1 XY
         Evaluation &bull; Cycle-Accurate In-Browser Simulator
       </footer>

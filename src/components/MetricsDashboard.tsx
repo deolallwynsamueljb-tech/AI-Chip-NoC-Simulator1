@@ -53,7 +53,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
             Real-Time Performance Monitor &amp; Energy Telemetry
           </h3>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+        <div className="flex items-center gap-2 text-[12px] font-mono text-slate-400">
           <span>{config.techNodeNm}nm energy model</span>
         </div>
       </div>
@@ -62,17 +62,17 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* KPI 1: Average Latency */}
         <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded flex flex-col justify-between">
-          <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-mono font-bold">
+          <div className="flex justify-between items-center text-[12px] text-slate-400 uppercase font-mono font-bold">
             <span>Avg Packet Latency</span>
             <Clock className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="my-1">
             <span className="text-2xl font-mono font-bold text-white">
               {averagePacketLatency.toFixed(2)}{' '}
-              <span className="text-xs font-normal text-slate-500 font-sans">cycles</span>
+              <span className="text-xs font-normal text-slate-400 font-sans">cycles</span>
             </span>
           </div>
-          <div className="text-[9px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
+          <div className="text-[11px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
             <span>P99: {tailLatencyP99.toFixed(1)}c</span>
             <span>Max: {maxPacketLatency}c</span>
           </div>
@@ -80,17 +80,17 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
         {/* KPI 2: Accepted Throughput */}
         <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded flex flex-col justify-between">
-          <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-mono font-bold">
+          <div className="flex justify-between items-center text-[12px] text-slate-400 uppercase font-mono font-bold">
             <span>Accepted Throughput</span>
             <BarChart2 className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="my-1">
             <span className="text-2xl font-mono font-bold text-white">
               {throughputFlitsPerNodeCycle.toFixed(3)}{' '}
-              <span className="text-xs font-normal text-slate-500 font-sans">flit/node/c</span>
+              <span className="text-xs font-normal text-slate-400 font-sans">flit/node/c</span>
             </span>
           </div>
-          <div className="text-[9px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
+          <div className="text-[11px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
             <span>Delivered: {totalDeliveredFlits}</span>
             <span>Injected: {totalInjectedFlits}</span>
           </div>
@@ -98,17 +98,17 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
         {/* KPI 3: Energy per Flit */}
         <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded flex flex-col justify-between">
-          <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-mono font-bold">
+          <div className="flex justify-between items-center text-[12px] text-slate-400 uppercase font-mono font-bold">
             <span>Energy Dissipation</span>
             <Zap className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="my-1">
             <span className="text-2xl font-mono font-bold text-white">
               {energyPerFlitPJ.toFixed(2)}{' '}
-              <span className="text-xs font-normal text-slate-500 font-sans">pJ / flit</span>
+              <span className="text-xs font-normal text-slate-400 font-sans">pJ / flit</span>
             </span>
           </div>
-          <div className="text-[9px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
+          <div className="text-[11px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
             <span>Total: {totalEnergyPJ.toFixed(0)} pJ</span>
             <span>Leakage: {leakageEnergyPJ.toFixed(0)} pJ</span>
           </div>
@@ -116,17 +116,17 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
         {/* KPI 4: Energy-Delay Product */}
         <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded flex flex-col justify-between">
-          <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-mono font-bold">
+          <div className="flex justify-between items-center text-[12px] text-slate-400 uppercase font-mono font-bold">
             <span>Energy-Delay Product</span>
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="my-1">
             <span className="text-2xl font-mono font-bold text-emerald-400">
               {energyDelayProduct.toFixed(1)}{' '}
-              <span className="text-xs font-normal text-slate-500 font-sans">pJ &bull; cyc</span>
+              <span className="text-xs font-normal text-slate-400 font-sans">pJ &bull; cyc</span>
             </span>
           </div>
-          <div className="text-[9px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
+          <div className="text-[11px] font-mono text-slate-400 flex justify-between border-t border-[var(--border-subtle)] pt-1">
             <span>Buffer Load: {averageBufferOccupancyPct.toFixed(1)}%</span>
             <span>
               Controller: {totalEnergyPJ > 0 ? ((controllerOverheadPJ / totalEnergyPJ) * 100).toFixed(2) : '0.00'}%
@@ -137,30 +137,30 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
       {/* Energy Component Breakdown */}
       <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-mono font-bold uppercase text-slate-400">
+        <div className="flex items-center justify-between text-[12px] font-mono font-bold uppercase text-slate-400">
           <span>Energy subsystem breakdown ({config.techNodeNm}nm)</span>
           <span className="text-emerald-400">Total: {totalEnergyPJ.toFixed(1)} pJ</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px] font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[12px] font-mono">
           <div className="bg-[var(--bg-surface)] p-2 rounded border border-[var(--border-subtle)]">
-            <span className="text-slate-500 block text-[9px]">BUFFER FIFOS</span>
+            <span className="text-slate-400 block text-[11px]">BUFFER FIFOS</span>
             <span className="font-bold text-white">{routerDynamicEnergyPJ.toFixed(1)} pJ</span>
           </div>
           <div className="bg-[var(--bg-surface)] p-2 rounded border border-[var(--border-subtle)]">
-            <span className="text-slate-500 block text-[9px]">CROSSBAR XBAR</span>
+            <span className="text-slate-400 block text-[11px]">CROSSBAR XBAR</span>
             <span className="font-bold text-white">{crossbarEnergyPJ.toFixed(1)} pJ</span>
           </div>
           <div className="bg-[var(--bg-surface)] p-2 rounded border border-[var(--border-subtle)]">
-            <span className="text-slate-500 block text-[9px]">INTERCONNECT LINKS</span>
+            <span className="text-slate-400 block text-[11px]">INTERCONNECT LINKS</span>
             <span className="font-bold text-white">{linkEnergyPJ.toFixed(1)} pJ</span>
           </div>
           <div className="bg-[var(--bg-surface)] p-2 rounded border border-[var(--border-subtle)]">
-            <span className="text-slate-500 block text-[9px]">STATIC LEAKAGE</span>
+            <span className="text-slate-400 block text-[11px]">STATIC LEAKAGE</span>
             <span className="font-bold text-white">{leakageEnergyPJ.toFixed(1)} pJ</span>
           </div>
           <div className="bg-[var(--bg-surface)] p-2 rounded border border-emerald-500/30">
-            <span className="text-emerald-400 block text-[9px]">CONTROLLER LOGIC</span>
+            <span className="text-emerald-400 block text-[11px]">CONTROLLER LOGIC</span>
             <span className="font-bold text-emerald-300">{controllerOverheadPJ.toFixed(2)} pJ</span>
           </div>
         </div>

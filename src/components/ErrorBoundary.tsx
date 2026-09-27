@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="bg-[var(--bg-deep)] p-3 rounded border border-[var(--border-subtle)] text-xs text-red-300 overflow-x-auto">
               <p className="font-bold">{this.state.error?.toString()}</p>
               {this.state.errorInfo && (
-                <pre className="mt-2 text-[10px] text-slate-500 whitespace-pre-wrap">
+                <pre className="mt-2 text-[10px] text-slate-400 whitespace-pre-wrap">
                   {this.state.errorInfo.componentStack}
                 </pre>
               )}

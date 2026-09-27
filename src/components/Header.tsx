@@ -70,11 +70,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <h1 className="text-sm font-semibold tracking-tight text-white">
                   Adaptive AI-NoC
                 </h1>
-                <span className="text-[10px] font-mono text-slate-400 bg-[var(--bg-inset)] border border-[var(--border-subtle)] px-1.5 py-0.2 rounded">
+                <span className="text-[12px] font-mono text-slate-400 bg-[var(--bg-inset)] border border-[var(--border-subtle)] px-1.5 py-0.2 rounded">
                   {config.meshWidth}&times;{config.meshHeight} mesh
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[13px] text-slate-400">
                 Self-reconfigurable runtime routing controller
               </p>
             </div>
@@ -83,14 +83,14 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Top Status & Main Nav Bar */}
           <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
             {/* Telemetry quick badges */}
-            <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono mr-2">
+            <div className="hidden lg:flex items-center gap-3 text-[13px] font-mono mr-2">
               <div className="flex items-center gap-1.5 text-slate-300" title={connected ? 'Connected to simulation server' : 'Disconnected from simulation server'}>
                 <span className={`w-2 h-2 rounded-full ${connected ? (isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500') : 'bg-red-500'}`}></span>
-                <span className="text-[10px] font-medium text-slate-400">
+                <span className="text-[12px] font-medium text-slate-400">
                   {!connected ? 'Reconnecting…' : isRunning ? 'Running' : 'Paused'}
                 </span>
               </div>
-              <div className="bg-[var(--bg-inset)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[10px] text-emerald-400">
+              <div className="bg-[var(--bg-inset)] px-2 py-0.5 rounded border border-[var(--border-subtle)] text-[12px] text-emerald-400">
                 {config.injectionRate.toFixed(2)} inj/cycle
               </div>
             </div>
@@ -99,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="tab-simulator"
                 onClick={() => onSetActiveTab('simulator')}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 text-[13px] font-medium rounded transition-colors flex items-center gap-1.5 ${
                   activeTab === 'simulator'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="tab-compare"
                 onClick={() => onSetActiveTab('compare')}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 text-[13px] font-medium rounded transition-colors flex items-center gap-1.5 ${
                   activeTab === 'compare'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="tab-benchmarks"
                 onClick={() => onSetActiveTab('benchmarks')}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 text-[13px] font-medium rounded transition-colors flex items-center gap-1.5 ${
                   activeTab === 'benchmarks'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="tab-research"
                 onClick={() => onSetActiveTab('research')}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 text-[13px] font-medium rounded transition-colors flex items-center gap-1.5 ${
                   activeTab === 'research'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-export-code"
               onClick={onOpenCodeExport}
-              className="px-2.5 py-1 text-[11px] font-semibold rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1 text-[13px] font-semibold rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1.5 transition-colors"
               title="Export Python & Verilog RTL"
             >
               <Code2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-run-full-sweep"
               onClick={onRunSweep}
-              className="px-2.5 py-1 text-[11px] font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-black shadow-sm flex items-center gap-1 transition-all"
+              className="px-2.5 py-1 text-[13px] font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-black shadow-sm flex items-center gap-1 transition-all"
             >
               <Zap className="w-3 h-3 fill-black" />
               Sweep
@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-toggle-play"
               onClick={onTogglePlay}
-              className={`px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
+              className={`px-3 py-1 rounded text-[13px] font-bold flex items-center gap-1.5 transition-colors ${
                 isRunning
                   ? 'bg-amber-600/20 text-amber-300 border border-amber-500/40 hover:bg-amber-600/30'
                   : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
@@ -188,7 +188,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="btn-step-1"
               onClick={() => onStepCycle(1)}
               disabled={isRunning}
-              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[11px]"
+              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[13px]"
             >
               <StepForward className="w-3 h-3" />
               +1c
@@ -198,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="btn-step-25"
               onClick={() => onStepCycle(config.epochCycles)}
               disabled={isRunning}
-              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[11px]"
+              className="px-2 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] disabled:opacity-40 text-slate-300 border border-[var(--border-subtle)] flex items-center gap-1 text-[13px]"
             >
               <FastForward className="w-3 h-3" />
               +{config.epochCycles}c
@@ -215,12 +215,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Sim Speed selector */}
             <div className="flex items-center gap-1 bg-[var(--bg-inset)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
-              <span className="text-[10px] text-slate-500 font-bold">Speed</span>
+              <span className="text-[12px] text-slate-400 font-bold">Speed</span>
               {[1, 5, 20, 50].map((spd) => (
                 <button
                   key={spd}
                   onClick={() => onChangeSpeed(spd)}
-                  className={`px-1.5 py-0.2 text-[10px] rounded font-mono ${
+                  className={`px-1.5 py-0.2 text-[12px] rounded font-mono ${
                     simSpeed === spd
                       ? 'bg-emerald-500 text-black font-bold'
                       : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
@@ -236,12 +236,12 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center flex-wrap gap-2">
             {/* Workload */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-medium">Workload</span>
+              <span className="text-[12px] text-slate-400 font-medium">Workload</span>
               <select
                 id="select-workload"
                 value={config.workloadType}
                 onChange={(e) => onUpdateConfig({ workloadType: e.target.value as WorkloadType })}
-                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-slate-200 text-[11px] font-mono rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
+                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-slate-200 text-[13px] font-mono rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
               >
                 <option value="CNN_LOCAL">CNN_LOCAL (High Spatial Locality)</option>
                 <option value="TRANSFORMER_GLOBAL">TRANSFORMER_GLOBAL (All-to-All)</option>
@@ -272,7 +272,7 @@ export const Header: React.FC<HeaderProps> = ({
                   customTraceStatus?.text ??
                   'Upload a trace file (CSV or JSON) to replay as CUSTOM_TRACE — requires a 4x4 mesh'
                 }
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono ${
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[12px] font-mono ${
                   customTraceStatus?.isError
                     ? 'border-red-500/60 text-red-400 hover:bg-red-950/40'
                     : customTraceStatus
@@ -287,12 +287,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Routing Mode */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-medium">Routing</span>
+              <span className="text-[12px] text-slate-400 font-medium">Routing</span>
               <select
                 id="select-routing-mode"
                 value={config.routingMode}
                 onChange={(e) => onUpdateConfig({ routingMode: e.target.value as RoutingMode })}
-                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-emerald-400 text-[11px] font-mono font-bold rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
+                className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-emerald-400 text-[13px] font-mono font-bold rounded px-2 py-0.5 focus:border-emerald-500 focus:outline-none"
               >
                 <option value="PROPOSED_RECONFIGURABLE">&#9733; Proposed: Self-Reconfigurable</option>
                 <option value="BASELINE_XY">Baseline-1: XY Routing</option>
@@ -304,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Current Cycle Pill */}
-            <div className="bg-[var(--bg-deep)] px-2 py-0.5 rounded border border-[var(--border-subtle)] font-mono text-[11px] text-emerald-400">
+            <div className="bg-[var(--bg-deep)] px-2 py-0.5 rounded border border-[var(--border-subtle)] font-mono text-[13px] text-emerald-400">
               Cycle <span className="font-bold text-white">{currentCycle}</span>
             </div>
           </div>

@@ -23,7 +23,7 @@ export const ResearchOverview: React.FC = () => {
             <h2 className="text-xs font-bold font-mono tracking-tight text-white uppercase">
               Research Thesis &amp; Architectural Novelty
             </h2>
-            <p className="text-[10px] text-slate-400 font-mono">
+            <p className="text-[12px] text-slate-400 font-mono">
               Workload-Aware Self-Reconfigurable Mesh NoC for Heterogeneous AI Workloads
             </p>
           </div>
@@ -32,17 +32,17 @@ export const ResearchOverview: React.FC = () => {
 
       {/* 1. Core Novelty Formulation */}
       <div className="bg-[var(--bg-inset)] border border-emerald-500/50 rounded p-3 space-y-2">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold font-mono uppercase tracking-wider text-emerald-400">
+        <div className="flex items-center gap-1.5 text-[12px] font-bold font-mono uppercase tracking-wider text-emerald-400">
           <Sparkles className="w-3.5 h-3.5" />
           The Exact Research Novelty &amp; Distinction
         </div>
-        <p className="text-[10px] font-mono text-slate-300 leading-relaxed">
+        <p className="text-[12px] font-mono text-slate-300 leading-relaxed">
           Rather than claiming <em>&quot;Adaptive routing for AI NoC is new&quot;</em> (which is widely researched in literature), our key architectural contribution is:
         </p>
-        <blockquote className="border-l-2 border-emerald-400 pl-3 py-1 text-[10px] font-mono text-emerald-300 bg-[var(--bg-surface)] rounded-r">
+        <blockquote className="border-l-2 border-emerald-400 pl-3 py-1 text-[12px] font-mono text-emerald-300 bg-[var(--bg-surface)] rounded-r">
           &quot;A lightweight runtime controller that dynamically infers the spatial and temporal characteristics of heterogeneous AI workloads and reconfigures router operating modes (XY, Adaptive DyXY, Congestion-Aware RCA, and Low-Power Bypass) in closed-loop feedback, aiming for the best achievable combination of latency, congestion, and energy for the traffic actually observed.&quot;
         </blockquote>
-        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+        <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
           This is not a claim of measured silicon area or a proven Pareto optimum &mdash; this controller has not been
           synthesized. It is a research question, tested empirically below and in the offline validation suite: does
           runtime mode-switching beat any single static policy on real AI workload traffic, and by how much?
@@ -51,21 +51,21 @@ export const ResearchOverview: React.FC = () => {
 
       {/* 2. Workload to Mode Mapping Grid */}
       <div className="space-y-2">
-        <h3 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+        <h3 className="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-emerald-400" />
           Dynamic Workload-to-Routing Mapping Framework
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-[10px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-[12px]">
           {/* Card 1: CNN */}
           <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-bold text-white uppercase">CNN Workload</span>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                 Locality &gt; 60%
               </span>
             </div>
-            <div className="text-slate-400 text-[9px]">
+            <div className="text-slate-400 text-[11px]">
               High nearest-neighbor traffic (Conv2D kernels, systolic weight-stationary dataflow).
             </div>
             <div className="pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-1 text-emerald-400 font-bold">
@@ -78,11 +78,11 @@ export const ResearchOverview: React.FC = () => {
           <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-bold text-white uppercase">Transformer / LLM</span>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
+              <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
                 Global Hop &gt; 2.5
               </span>
             </div>
-            <div className="text-slate-400 text-[9px]">
+            <div className="text-slate-400 text-[11px]">
               All-to-All Self-Attention, Key-Value cache broadcast, and cross-chip embeddings.
             </div>
             <div className="pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-1 text-purple-300 font-bold">
@@ -95,11 +95,11 @@ export const ResearchOverview: React.FC = () => {
           <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-bold text-white uppercase">Low / Idle Regime</span>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
+              <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
                 Buffer Load &lt; 12%
               </span>
             </div>
-            <div className="text-slate-400 text-[9px]">
+            <div className="text-slate-400 text-[11px]">
               Sparse injection rates between compute phases or layer transitions.
             </div>
             <div className="pt-1.5 border-t border-[var(--border-subtle)] flex items-center gap-1 text-cyan-300 font-bold">
@@ -112,11 +112,11 @@ export const ResearchOverview: React.FC = () => {
 
       {/* 3. Methodology & Results Summary */}
       <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-2">
-        <h3 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+        <h3 className="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
           Evaluation Methodology &amp; Benchmarking Steps
         </h3>
-        <ol className="list-decimal list-inside text-[10px] font-mono text-slate-300 space-y-1 leading-relaxed">
+        <ol className="list-decimal list-inside text-[12px] font-mono text-slate-300 space-y-1 leading-relaxed">
           <li>
             <strong>Baseline-1 (XY Routing):</strong> Established deterministic dimension-order XY routing as the reference baseline across injection rates 0.05 through 0.50.
           </li>
@@ -131,11 +131,11 @@ export const ResearchOverview: React.FC = () => {
 
       {/* 4. Offline Research Validation (from the separate Python research engine) */}
       <div className="space-y-2">
-        <h3 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+        <h3 className="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
           <Cpu className="w-3.5 h-3.5 text-emerald-400" />
           Offline Research Validation (research-engine/, Python)
         </h3>
-        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+        <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
           This live simulator and <code>research-engine/</code> are two independently-built, purpose-built engines,
           not one shared codebase &mdash; the live view above runs synthetic traffic (or a replayed real-AI-model
           trace, see the Workload selector) with a fast per-tick model; <code>research-engine/</code> is a
@@ -145,7 +145,7 @@ export const ResearchOverview: React.FC = () => {
           <code>research-engine/experiments/run_experiments.py</code> &mdash; not hand-drawn, not retouched.
         </p>
 
-        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-2.5 space-y-1.5 font-mono text-[9px] text-slate-300 leading-relaxed">
+        <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-2.5 space-y-1.5 font-mono text-[11px] text-slate-300 leading-relaxed">
           <p>
             <strong className="text-emerald-400">Honest, unflattering result included:</strong> on single-workload
             traces, self-reconfiguration does not clearly beat static XY &mdash; on BERT it reconfigures once
@@ -187,7 +187,7 @@ export const ResearchOverview: React.FC = () => {
               className="block bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded overflow-hidden hover:border-emerald-500/60 transition-colors"
             >
               <img src={`/research/${file}`} alt={caption} className="w-full h-24 object-cover object-top" />
-              <div className="text-[8px] font-mono text-slate-400 p-1.5 leading-tight">{caption}</div>
+              <div className="text-[10px] font-mono text-slate-400 p-1.5 leading-tight">{caption}</div>
             </a>
           ))}
         </div>
@@ -195,18 +195,18 @@ export const ResearchOverview: React.FC = () => {
 
       {/* 5. Related Work: TB-TBP-inspired routing mode */}
       <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-2">
-        <h3 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+        <h3 className="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
           <BookOpen className="w-3.5 h-3.5 text-orange-400" />
           Related Work: Task-Based / TB-TBP Routing (new selectable mode)
         </h3>
-        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+        <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
           Fang, Wei, Liu &amp; Hou, &quot;TB-TBP: a task-based adaptive routing algorithm for network-on-chip in
           heterogenous CPU-GPU architectures,&quot; <em>J. Supercomput</em> 80, 6311&ndash;6335 (2024). Their setting is
           CPU/GPU/LLC/MC request-vs-reply traffic on a specific placement model this simulator doesn&apos;t have, so{' '}
           <strong className="text-orange-400">Task-Based: TB-TBP</strong> in the Routing selector keeps only the two
           ideas that actually transfer:
         </p>
-        <ol className="list-decimal list-inside text-[9px] font-mono text-slate-400 space-y-1 leading-relaxed">
+        <ol className="list-decimal list-inside text-[11px] font-mono text-slate-400 space-y-1 leading-relaxed">
           <li>
             Each flow is fixed at creation (from its own src/dst endpoints, never re-decided mid-flight) to either an
             X-first or a Y-first dimension-order route &mdash; each class alone is a standard deadlock-free route, and
@@ -220,11 +220,11 @@ export const ResearchOverview: React.FC = () => {
             doesn&apos;t implement.
           </li>
         </ol>
-        <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+        <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
           This mode is directly selectable and fully live-simulated (Router Inspector shows the active TB/TBP policy
           per epoch); it is <em>not</em> currently included in the Benchmarks-tab sweep matrix or code export.
         </p>
-        <div className="bg-[var(--bg-surface)] border border-amber-500/30 rounded p-2.5 font-mono text-[9px] text-slate-300 leading-relaxed">
+        <div className="bg-[var(--bg-surface)] border border-amber-500/30 rounded p-2.5 font-mono text-[11px] text-slate-300 leading-relaxed">
           <strong className="text-amber-400">Honest result, tested not assumed:</strong> under sustained heavy
           global/bursty traffic (e.g. Transformer at high injection rate) this mode&apos;s delivery ratio drops well
           below Baseline-XY&apos;s &mdash; but so do this simulator&apos;s existing Adaptive-DyXY and Congestion-Aware

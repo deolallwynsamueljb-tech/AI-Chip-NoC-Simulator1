@@ -231,7 +231,7 @@ export const VoiceCommandButton: React.FC<VoiceCommandButtonProps> = ({
             {feedback.isError ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
             {feedback.text}
           </div>
-          {feedback.transcript && <div className="mt-1 text-[10px] opacity-70 font-mono">"{feedback.transcript}"</div>}
+          {feedback.transcript && <div className="mt-1 text-[12px] opacity-70 font-mono">"{feedback.transcript}"</div>}
         </div>
       )}
 

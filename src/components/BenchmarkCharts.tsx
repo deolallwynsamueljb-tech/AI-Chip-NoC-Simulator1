@@ -82,7 +82,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
             <BarChart3 className="w-4 h-4 text-emerald-400" />
             <h3 className="text-sm font-semibold text-white">Baseline-1 XY vs. proposed architecture</h3>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[13px] text-slate-400 mt-0.5">
             {benchmarkData
               ? `Swept ${benchmarkData.injectionRates.length} injection rates from ${benchmarkData.injectionRates[0].toFixed(2)} to ${benchmarkData.injectionRates[benchmarkData.injectionRates.length - 1].toFixed(2)} flits/node/cycle`
               : 'No sweep has run yet for the current configuration'}
@@ -91,7 +91,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
 
         {/* Metric Selector Tabs */}
         {benchmarkData && (
-          <div className="flex items-center gap-1 bg-[var(--bg-inset)] p-1 rounded border border-[var(--border-subtle)] text-[10px] font-mono">
+          <div className="flex items-center gap-1 bg-[var(--bg-inset)] p-1 rounded border border-[var(--border-subtle)] text-[12px] font-mono">
             <button
               onClick={() => setActiveMetric('LATENCY')}
               className={`px-2.5 py-1 rounded transition-colors ${
@@ -207,7 +207,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
             </div>
 
             {/* Results Summary - computed from the sweep that just ran */}
-            <div className="lg:col-span-4 bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded space-y-3 font-mono text-[10px]">
+            <div className="lg:col-span-4 bg-[var(--bg-inset)] border border-[var(--border-subtle)] p-3 rounded space-y-3 font-mono text-[12px]">
               <div className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
                 Results summary
@@ -215,7 +215,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
 
               <div className="space-y-2 text-slate-300">
                 <div className="p-2 bg-[var(--bg-surface)] rounded border border-[var(--border-subtle)]">
-                  <div className="text-slate-500 text-[9px] uppercase">Saturation onset</div>
+                  <div className="text-slate-400 text-[11px] uppercase">Saturation onset</div>
                   <div className="text-xs font-bold text-white mt-0.5">
                     Baseline saturates at{' '}
                     <span className="text-red-400">{insights.baselineSatRate !== null ? insights.baselineSatRate.toFixed(2) : 'not reached'}</span>
@@ -228,7 +228,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
 
                 {insights.latencyGainPct !== null && (
                   <div className="p-2 bg-[var(--bg-surface)] rounded border border-emerald-500/30">
-                    <div className="text-emerald-400 text-[9px] uppercase">Latency gain at high load ({insights.highLoadRate.toFixed(2)})</div>
+                    <div className="text-emerald-400 text-[11px] uppercase">Latency gain at high load ({insights.highLoadRate.toFixed(2)})</div>
                     <div className="text-xs font-bold text-emerald-300 mt-0.5">
                       {insights.latencyGainPct.toFixed(1)}% average latency reduction
                     </div>
@@ -236,7 +236,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
                 )}
 
                 <div className="p-2 bg-[var(--bg-surface)] rounded border border-[var(--border-subtle)]">
-                  <div className="text-slate-500 text-[9px] uppercase">Tail latency (P99) at high load</div>
+                  <div className="text-slate-400 text-[11px] uppercase">Tail latency (P99) at high load</div>
                   <div className="text-xs font-bold text-white mt-0.5">
                     Baseline: {insights.baseHighP99?.toFixed(1) ?? '—'}c &bull; Proposed:{' '}
                     <span className="text-emerald-400">{insights.propHighP99?.toFixed(1) ?? '—'}c</span>
@@ -249,12 +249,12 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
           {/* AI Workload Sensitivity Matrix */}
           {workloadSensitivity && (
             <div className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 space-y-2">
-              <h4 className="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <h4 className="text-[12px] font-bold font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-emerald-400" />
                 AI workload latency sensitivity (vs. Baseline-1 XY)
               </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 font-mono text-[10px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 font-mono text-[12px]">
                 {workloadSensitivity.map((item) => (
                   <div key={item.workload} className="p-2 bg-[var(--bg-surface)] rounded border border-[var(--border-subtle)] flex flex-col justify-between">
                     <div className="flex items-center justify-between">
@@ -263,7 +263,7 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
                         -{item.latencyReductionPct.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="text-slate-400 text-[9px] mt-2 flex justify-between">
+                    <div className="text-slate-400 text-[11px] mt-2 flex justify-between">
                       <span>XY: {item.baselineXY.avgLatency.toFixed(1)}c</span>
                       <span className="text-emerald-300 font-bold">Prop: {item.proposed.avgLatency.toFixed(1)}c</span>
                     </div>

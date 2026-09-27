@@ -105,7 +105,7 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
             <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-subtle)]">
               <GitCompareArrows className="w-4 h-4 text-emerald-400" />
               <h3 className="text-sm font-semibold text-white">Architecture comparison — Conventional vs. Proposed</h3>
-              <span className="text-[10px] text-slate-500 font-mono ml-auto">
+              <span className="text-[12px] text-slate-400 font-mono ml-auto">
                 {result.cyclesRun.toLocaleString()} cycles ·{' '}
                 {result.baseline.metrics.totalInjectedPackets.toLocaleString()} / {result.proposed.metrics.totalInjectedPackets.toLocaleString()} packets injected
               </span>
@@ -113,7 +113,7 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
 
             <div className="overflow-x-auto rounded border border-[var(--border-subtle)]">
               <table className="w-full text-left text-xs text-slate-300 border-collapse font-mono">
-                <thead className="bg-[var(--bg-inset)] text-[10px] font-bold text-slate-400 uppercase border-b border-[var(--border-subtle)]">
+                <thead className="bg-[var(--bg-inset)] text-[12px] font-bold text-slate-400 uppercase border-b border-[var(--border-subtle)]">
                   <tr>
                     <th className="py-2.5 px-3">Metric</th>
                     <th className="py-2.5 px-3">Conventional NoC</th>
@@ -123,7 +123,7 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
                     <th className="py-2.5 px-3">Improvement</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]/70 text-[10px]">
+                <tbody className="divide-y divide-[var(--border-subtle)]/70 text-[12px]">
                   <tr>
                     <td className="py-2 px-3 font-semibold text-white font-sans">Average Latency</td>
                     <td className="py-2 px-3">{fmt(result.baseline.metrics.averagePacketLatency, 2, ' cyc')}</td>
@@ -179,7 +179,7 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
               </table>
             </div>
 
-            <p className="text-[9px] text-slate-500 font-mono">
+            <p className="text-[11px] text-slate-400 font-mono">
               Energy figures are a simulation model/estimate (buffer/crossbar/link/leakage/reconfiguration overhead scaled by
               technology node), not measured silicon power.
             </p>
@@ -201,8 +201,8 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
               { title: 'Energy-Delay Product', data: barData.edp, unit: 'pJ·cyc', lowerBetter: true },
             ].map((panel) => (
               <div key={panel.title} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded p-3 h-48">
-                <div className="text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                  {panel.title} <span className="text-slate-600">({panel.unit})</span>
+                <div className="text-[12px] font-mono font-bold text-slate-400 uppercase mb-1">
+                  {panel.title} <span className="text-slate-400">({panel.unit})</span>
                 </div>
                 <ResponsiveContainer width="100%" height="85%">
                   <BarChart data={panel.data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -263,7 +263,7 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
           <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-subtle)]">
             <ShieldAlert className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-semibold text-white">Fault tolerance — sweep across fault rate</h3>
-            <span className="text-[10px] text-slate-500 font-mono ml-auto">{faultSweep.faultType.replace('_', ' ')}</span>
+            <span className="text-[12px] text-slate-400 font-mono ml-auto">{faultSweep.faultType.replace('_', ' ')}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -278,8 +278,8 @@ export const ArchitectureComparisonView: React.FC<ArchitectureComparisonViewProp
               }));
               return (
                 <div key={panel.key} className="bg-[var(--bg-inset)] border border-[var(--border-subtle)] rounded p-3 h-56">
-                  <div className="text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">
-                    {panel.title} <span className="text-slate-600">({panel.unit})</span>
+                  <div className="text-[12px] font-mono font-bold text-slate-400 uppercase mb-1">
+                    {panel.title} <span className="text-slate-400">({panel.unit})</span>
                   </div>
                   <ResponsiveContainer width="100%" height="88%">
                     <LineChart data={chartData} margin={{ top: 5, right: 15, left: -15, bottom: 0 }}>

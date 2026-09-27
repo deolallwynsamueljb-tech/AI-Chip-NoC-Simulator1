@@ -43,21 +43,21 @@ export const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ teleme
                   : 'border-[var(--border-subtle)] bg-[var(--bg-inset)]'
               }`}
             >
-              <s.icon className={`w-3.5 h-3.5 shrink-0 ${s.highlight ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <s.icon className={`w-3.5 h-3.5 shrink-0 ${s.highlight ? 'text-emerald-400' : 'text-slate-400'}`} />
               <div className="leading-tight">
-                <div className="text-[9px] uppercase tracking-wide text-slate-500 font-mono">{s.label}</div>
-                <div className="text-[11px] font-bold text-white font-mono">{s.value}</div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400 font-mono">{s.label}</div>
+                <div className="text-[13px] font-bold text-white font-mono">{s.value}</div>
               </div>
               {s.badge && (
-                <span className="ml-1 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                <span className="ml-1 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">
                   {s.badge}
                 </span>
               )}
             </div>
-            {i < stages.length - 1 && <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />}
+            {i < stages.length - 1 && <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />}
           </React.Fragment>
         ))}
-        <span className="ml-auto flex items-center gap-1.5 text-[9px] font-mono text-emerald-400">
+        <span className="ml-auto flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           closed-loop synced
         </span>

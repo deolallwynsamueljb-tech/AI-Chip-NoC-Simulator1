@@ -66,7 +66,7 @@ export const AssistantPanel: React.FC<AssistantPanelProps> = ({ config, metrics,
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
         {messages.length === 0 && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Ask about the current run — e.g. "why did the controller switch to congestion-aware routing?" or "is the
             network saturated right now?". Answers are grounded in the live config, metrics, and telemetry.
           </p>

@@ -59,7 +59,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
             <Cpu className="w-4 h-4 text-emerald-400" />
             <h3 className="text-sm font-semibold text-white">Baseline vs. proposed comparison</h3>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[13px] text-slate-400 mt-0.5">
             Operating point: injection rate ={' '}
             <strong className="text-white font-mono">{fmt(benchmarkData.injectionRates[targetIdx], 2)}</strong> flits/node/cycle
             &bull; workload: <strong className="text-emerald-400">{config.workloadType.replace('_', ' ')}</strong>
@@ -68,11 +68,11 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
 
         {latDelta && tputDelta && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold text-[10px]">
+            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold text-[12px]">
               {latDelta.sign}
               {latDelta.pct}% latency
             </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px]">
+            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[12px]">
               +{tputDelta.pct}% throughput
             </span>
           </div>
@@ -82,7 +82,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
       {/* Comparison Table */}
       <div className="overflow-x-auto rounded border border-[var(--border-subtle)]">
         <table className="w-full text-left text-xs text-slate-300 border-collapse font-mono">
-          <thead className="bg-[var(--bg-inset)] text-[10px] font-bold text-slate-400 uppercase border-b border-[var(--border-subtle)]">
+          <thead className="bg-[var(--bg-inset)] text-[12px] font-bold text-slate-400 uppercase border-b border-[var(--border-subtle)]">
             <tr>
               <th className="py-2.5 px-3">Metric</th>
               <th className="py-2.5 px-3 bg-[var(--bg-surface)] text-slate-400">Baseline-1 (XY)</th>
@@ -94,7 +94,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]/70 text-[10px]">
+          <tbody className="divide-y divide-[var(--border-subtle)]/70 text-[12px]">
             {rows.map((row) => (
               <tr key={row.key} className="hover:bg-white/5">
                 <td className="py-2 px-3 font-semibold text-white font-sans">{row.label}</td>
@@ -106,7 +106,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
                   <div className="flex items-center justify-between gap-2">
                     <span>{fmt(prop?.[row.key] as number | undefined, row.digits, row.suffix)}</span>
                     {row.delta && (
-                      <span className="text-[9px] text-emerald-400 bg-emerald-500/20 px-1 py-0.2 rounded border border-emerald-500/40">
+                      <span className="text-[11px] text-emerald-400 bg-emerald-500/20 px-1 py-0.2 rounded border border-emerald-500/40">
                         {row.delta.sign}
                         {row.delta.pct}%
                       </span>

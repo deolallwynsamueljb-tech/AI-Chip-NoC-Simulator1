@@ -32,18 +32,18 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
             Workload Analyzer &amp; Controller
           </h3>
         </div>
-        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+        <span className="text-[12px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
           CLOSED-LOOP ACTIVE
         </span>
       </div>
 
       {/* 1. Workload Analyzer Telemetry Section */}
       <div className="space-y-2">
-        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block font-mono">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
           Stage 1: Workload Traffic Analyzer
         </label>
 
-        <div className="space-y-1.5 font-mono text-[10px]">
+        <div className="space-y-1.5 font-mono text-[12px]">
           {/* Spatial Locality Index */}
           <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)] space-y-1">
             <div className="flex justify-between items-center">
@@ -58,7 +58,7 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
                 style={{ width: `${Math.min(100, telemetry.spatialLocalityIndex * 100)}%` }}
               />
             </div>
-            <div className="text-[8px] text-slate-500 flex justify-between">
+            <div className="text-[10px] text-slate-400 flex justify-between">
               <span>0% Global Dispersed</span>
               <span>100% Systolic Local</span>
             </div>
@@ -67,14 +67,14 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
           {/* Average Hop Distance & Burstiness */}
           <div className="grid grid-cols-2 gap-1.5">
             <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
-              <div className="text-slate-500 text-[9px]">Average Hop Distance</div>
+              <div className="text-slate-400 text-[11px]">Average Hop Distance</div>
               <div className="text-sm font-bold text-white mt-0.5">
                 {telemetry.averageHopDistance.toFixed(2)}{' '}
-                <span className="text-[9px] font-normal text-slate-500">hops</span>
+                <span className="text-[11px] font-normal text-slate-400">hops</span>
               </div>
             </div>
             <div className="bg-[var(--bg-inset)] p-2 rounded border border-[var(--border-subtle)]">
-              <div className="text-slate-500 text-[9px]">Traffic Burstiness</div>
+              <div className="text-slate-400 text-[11px]">Traffic Burstiness</div>
               <div className="text-sm font-bold text-amber-400 mt-0.5">
                 {(telemetry.trafficBurstiness * 100).toFixed(0)}%
               </div>
@@ -85,7 +85,7 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
 
       {/* 2. Configuration Controller Mapping & Novelty Logic */}
       <div className="space-y-2">
-        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block font-mono">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
           Stage 2: Runtime Controller Policy Selection
         </label>
 
@@ -96,8 +96,8 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
               {telemetry.detectedWorkloadClass}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[10px] font-mono">
-            <span className="text-slate-500" title="Threshold-margin heuristic for this rule-based classifier, recomputed every epoch -- not a trained model's calibrated probability.">
+          <div className="flex items-center justify-between text-[12px] font-mono">
+            <span className="text-slate-400" title="Threshold-margin heuristic for this rule-based classifier, recomputed every epoch -- not a trained model's calibrated probability.">
               Classification confidence (rule margin):
             </span>
             <span className="font-bold text-slate-300">
@@ -106,7 +106,7 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
           </div>
 
           {/* Workload -> mode legend, condensed to one row */}
-          <div className="grid grid-cols-3 gap-1 font-mono text-[8px]">
+          <div className="grid grid-cols-3 gap-1 font-mono text-[10px]">
             {[
               {
                 match: telemetry.detectedWorkloadClass === 'CNN_LOCAL',
@@ -133,7 +133,7 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
               <div
                 key={row.label}
                 className={`p-1.5 rounded border leading-tight ${
-                  row.match ? `${row.active} font-bold` : 'bg-[var(--bg-surface)] text-slate-500 border-[var(--border-subtle)]'
+                  row.match ? `${row.active} font-bold` : 'bg-[var(--bg-surface)] text-slate-400 border-[var(--border-subtle)]'
                 }`}
               >
                 <div className="flex items-center gap-1">
@@ -149,13 +149,13 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
 
       {/* 3. Feedback Loop Terminal Stream */}
       <div className="flex-1 flex flex-col space-y-1.5">
-        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block font-mono">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
           Stage 3: Controller Decision Log &amp; Reconfiguration Stream
         </label>
 
-        <div className="flex-1 bg-[var(--bg-deep)] p-2.5 rounded border border-[var(--border-subtle)] font-mono text-[9px] text-slate-300 space-y-1 overflow-y-auto max-h-36">
+        <div className="flex-1 bg-[var(--bg-deep)] p-2.5 rounded border border-[var(--border-subtle)] font-mono text-[11px] text-slate-300 space-y-1 overflow-y-auto max-h-36">
           {(!telemetry?.history || telemetry.history.length === 0) ? (
-            <div className="text-slate-600 italic">Listening for workload epoch state changes...</div>
+            <div className="text-slate-400 italic">Listening for workload epoch state changes...</div>
           ) : (
             // Collapse consecutive "already_active" entries (the steady-state
             // case, often dozens in a row) into one summary line -- keeps
@@ -185,7 +185,7 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
               }
               return out.map((row, idx) =>
                 row.kind === 'run' ? (
-                  <div key={idx} className="flex items-start gap-1.5 leading-tight text-slate-600">
+                  <div key={idx} className="flex items-start gap-1.5 leading-tight text-slate-400">
                     <span className="shrink-0">[{row.oldestCycle}c&ndash;{row.item.cycle}c]</span>
                     <span>
                       {row.item.selectedMode.replace('_', ' ')} steady &mdash; already active x{row.count}
@@ -197,13 +197,13 @@ export const WorkloadControllerPanel: React.FC<WorkloadControllerPanelProps> = (
                       <span className="text-emerald-400 shrink-0">[{row.item.cycle}c]</span>
                       <span className="text-slate-400">{row.item.detectedPattern} &rarr;</span>
                       <span className="text-white font-bold">{row.item.selectedMode.replace('_', ' ')}</span>
-                      <span className="text-[8px] text-slate-500 ml-auto">
+                      <span className="text-[10px] text-slate-400 ml-auto">
                         (avg: {row.item.avgBufferLoad.toFixed(0)}%)
                       </span>
                     </div>
                     {row.item.reason && row.item.reason !== 'static_policy' && (
                       <span
-                        className={`text-[8px] ml-[52px] ${
+                        className={`text-[10px] ml-[52px] ${
                           row.item.reason === 'applied' ? 'text-emerald-500' : 'text-amber-500'
                         }`}
                       >

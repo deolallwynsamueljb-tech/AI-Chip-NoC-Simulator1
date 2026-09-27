@@ -85,7 +85,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
               <h3 className="text-xs font-bold font-mono text-white uppercase">
                 Export Python &amp; Verilog RTL Artifacts
               </h3>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[12px] text-slate-400 font-mono">
                 Standalone executable code files for evaluation in Python / GEM5 / BookSim / Verilog
               </p>
             </div>
@@ -101,7 +101,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
 
         {/* Tab selector & actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex bg-[var(--bg-inset)] p-0.5 rounded border border-[var(--border-subtle)] text-[10px] font-mono">
+          <div className="flex bg-[var(--bg-inset)] p-0.5 rounded border border-[var(--border-subtle)] text-[12px] font-mono">
             <button
               onClick={() => setSelectedFile('PROPOSED_PY')}
               className={`px-2.5 py-1 rounded font-semibold flex items-center gap-1.5 transition-colors ${
@@ -140,14 +140,14 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleCopy}
-              className="px-2.5 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-slate-200 text-[10px] font-mono border border-[var(--border-subtle)] flex items-center gap-1"
+              className="px-2.5 py-1 rounded bg-[var(--bg-inset)] hover:bg-[#21262d] text-slate-200 text-[12px] font-mono border border-[var(--border-subtle)] flex items-center gap-1"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
             <button
               onClick={handleDownload}
-              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-black text-[10px] font-mono font-bold shadow-sm flex items-center gap-1"
+              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-black text-[12px] font-mono font-bold shadow-sm flex items-center gap-1"
             >
               <Download className="w-3 h-3" />
               Download {getFileName()}
@@ -156,7 +156,7 @@ export const CodeExportModal: React.FC<CodeExportModalProps> = ({
         </div>
 
         {/* Code Viewer */}
-        <div className="flex-1 overflow-auto bg-[var(--bg-deep)] p-3 rounded border border-[var(--border-subtle)] text-[10px] font-mono text-slate-300 leading-relaxed max-h-[460px]">
+        <div className="flex-1 overflow-auto bg-[var(--bg-deep)] p-3 rounded border border-[var(--border-subtle)] text-[12px] font-mono text-slate-300 leading-relaxed max-h-[460px]">
           <pre className="whitespace-pre">{getActiveCode()}</pre>
         </div>
       </div>

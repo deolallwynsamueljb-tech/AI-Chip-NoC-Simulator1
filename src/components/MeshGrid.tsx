@@ -101,7 +101,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
   // Helper for color coding tile based on heatmap
   const getTileStyle = (router: SerializedRouterNode, occupancyPct: number) => {
     if (heatmapMode === 'OCCUPANCY') {
-      if (occupancyPct < 5) return 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-slate-500';
+      if (occupancyPct < 5) return 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-slate-400';
       if (occupancyPct < 25) return 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300';
       if (occupancyPct < 50) return 'bg-emerald-700/50 border-emerald-500/60 text-emerald-100';
       if (occupancyPct < 75) return 'bg-yellow-900/60 border-yellow-500/60 text-yellow-200';
@@ -153,13 +153,13 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
               {title ?? `Mesh NoC Visualizer (${meshWidth}×${meshHeight} Grid Topology)`}
             </h2>
           </div>
-          <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+          <p className="text-[12px] text-slate-400 font-mono mt-0.5">
             Click any router tile to inspect port queues, VC state, and dynamic deflection
           </p>
         </div>
 
         {/* Heatmap Mode Selector */}
-        <div className="flex items-center gap-1 bg-[var(--bg-inset)] p-1 rounded border border-[var(--border-subtle)] text-[10px] font-mono">
+        <div className="flex items-center gap-1 bg-[var(--bg-inset)] p-1 rounded border border-[var(--border-subtle)] text-[12px] font-mono">
           <button
             onClick={() => setHeatmapMode('OCCUPANCY')}
             className={`px-2 py-0.5 rounded transition-colors ${
@@ -322,15 +322,15 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   }`}
                 >
                   {/* Top Tile Coordinates and Mode */}
-                  <div className="flex items-center justify-between text-[9px] font-mono font-bold leading-tight">
+                  <div className="flex items-center justify-between text-[10px] font-mono font-bold leading-tight">
                     <span>R({x},{y})</span>
                     {router.isFaulty ? (
-                      <span className="text-[8px] px-1 py-0.2 rounded bg-red-500/30 border border-red-400/60 uppercase flex items-center gap-0.5">
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-red-500/30 border border-red-400/60 uppercase flex items-center gap-0.5">
                         <X className="w-2 h-2" />
                         FAULT
                       </span>
                     ) : (
-                      <span className="text-[8px] px-1 py-0.2 rounded bg-black/40 border border-[var(--border-subtle)] uppercase">
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-black/40 border border-[var(--border-subtle)] uppercase">
                         {modeTag}
                       </span>
                     )}
@@ -339,7 +339,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   {/* Center Flit Count & Bar */}
                   <div className="my-auto text-center">
                     <div className="text-xs font-mono font-bold text-white">
-                      {totalFlits} <span className="text-[8px] font-normal text-slate-400">flits</span>
+                      {totalFlits} <span className="text-[9px] font-normal text-slate-400">flits</span>
                     </div>
                     <div className="w-full bg-[var(--bg-inset)] h-1 rounded-full overflow-hidden mt-1 border border-[var(--border-subtle)]">
                       <div
@@ -356,7 +356,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   </div>
 
                   {/* Bottom Stats: Total Injected/Delivered */}
-                  <div className="flex items-center justify-between text-[8px] text-slate-400 pt-1 border-t border-[var(--border-subtle)]/80 font-mono">
+                  <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1 border-t border-[var(--border-subtle)]/80 font-mono">
                     <span>Tx:{router.totalInjected}</span>
                     <span>Rx:{router.totalDelivered}</span>
                   </div>
@@ -373,7 +373,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
       </div>
 
       {/* Legend & Summary Info */}
-      <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-[9px] font-mono text-slate-400">
+      <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono text-slate-400">
         <div className="flex items-center gap-3">
           <span className="font-bold text-slate-300 uppercase">LOAD SCALE:</span>
           <span className="flex items-center gap-1">
