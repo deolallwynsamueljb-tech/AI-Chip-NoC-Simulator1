@@ -53,6 +53,55 @@ interface Candidate {
 }
 
 /**
+ * Escape-channel deadlock avoidance (Duato's protocol): reserve the LAST
+ * virtual channel as a deterministic-XY-only "escape" channel, whose
+ * channel dependency graph is a subgraph of plain XY routing's (so it's
+ * provably cycle-free), and let every OTHER virtual channel route fully
+ * adaptively with no turn restriction. A flit only takes the escape
+ * channel when every adaptive candidate's target buffer (the exact
+ * port+VC it would land in on the neighbor) is completely full -- see
+ * isTargetChannelFull below; once on it, Duato's protocol requires it
+ * stay on the escape channel and route deterministically for the rest of
+ * its journey, which is what guarantees no new cycle forms.
+ * Needs >=2 VCs (1 escape + >=1 adaptive) -- with exactly 1 VC there's no
+ * budget for a separate escape channel, so callers fall back to the
+ * West-First turn model instead (see faultAwareCandidates).
+ */
+function getEscapeInfo(config: NoCConfig): { canEscape: boolean; escapeVC: number } {
+  return { canEscape: config.virtualChannels >= 2, escapeVC: config.virtualChannels - 1 };
+}
+
+const OPPOSITE_PORT: Record<'EAST' | 'WEST' | 'NORTH' | 'SOUTH', PortDirection> = {
+  EAST: 'WEST',
+  WEST: 'EAST',
+  NORTH: 'SOUTH',
+  SOUTH: 'NORTH',
+};
+
+/**
+ * Duato's actual escape trigger: not a router-wide congestion average (that
+ * aggregates every port/VC, and can stay low even while the ONE specific
+ * channel a flit needs is completely full), but whether the *exact*
+ * downstream input buffer this hop would use -- the arrival-port/VC pair on
+ * the neighbor -- has any free slot at all. That's the precise condition
+ * that matters for the channel-dependency argument: a channel that still
+ * has room can't be the stuck link in a cyclic wait.
+ */
+function isTargetChannelFull(
+  candidate: Candidate,
+  vc: number,
+  config: NoCConfig,
+  allRouters: Map<number, RouterNode>
+): boolean {
+  const neighbor = allRouters.get(candidate.nextY * config.meshWidth + candidate.nextX);
+  if (!neighbor) return false;
+  const arrivalPort = OPPOSITE_PORT[candidate.port as 'EAST' | 'WEST' | 'NORTH' | 'SOUTH'];
+  const buffer = neighbor.buffers.get(`${arrivalPort}_${vc}`);
+  if (!buffer) return false;
+  return buffer.flits.length >= buffer.maxCapacity;
+}
+
+/**
  * Builds the usable candidate hop list towards (dstX, dstY): the minimal
  * (shortest-path) X/Y directions when they're clear, or -- when every
  * minimal direction is blocked by a fault -- deflects to a perpendicular
@@ -68,22 +117,25 @@ function faultAwareCandidates(
   dstY: number,
   config: NoCConfig,
   allRouters: Map<number, RouterNode>,
-  faultyLinks: FaultyLinkSet
+  faultyLinks: FaultyLinkSet,
+  fullyAdaptive: boolean
 ): { usable: (Candidate & { deflected: boolean })[]; avoided: { x: number; y: number; kind: 'ROUTER_FAULT' | 'LINK_FAULT' }[]; minimalFallback: Candidate[] } {
-  // West-First turn model (Glass & Ni, 1992): fully-adaptive minimal
-  // routing with no restriction is NOT deadlock-free even though every hop
-  // only moves toward the destination -- cyclic channel dependencies can
-  // still form across flows. West-First breaks every such cycle with one
-  // rule: a packet that still needs to move West must do so before it's
-  // allowed to turn North/South (i.e. N->W and S->W turns are forbidden;
-  // W->N, W->S, and all turns into/out of East remain fully adaptive).
-  // Implemented statelessly per-hop: while curX > dstX, West is the ONLY
-  // candidate offered this hop -- once curX === dstX, N/S/E are fully
-  // adaptive again exactly as before.
-  const needsWest = curX > dstX;
+  // Fully-adaptive minimal routing (both X and Y candidates offered
+  // whenever both exist) is NOT deadlock-free on its own -- cyclic channel
+  // dependencies can still form across flows even though every hop only
+  // moves toward the destination. When `fullyAdaptive` is false (no escape
+  // VC available -- see computeAdaptiveDyXY/computeCongestionAwareRCA),
+  // fall back to the West-First turn model (Glass & Ni, 1992) to guarantee
+  // deadlock-freedom by restriction alone: a packet that still needs to
+  // move West must do so before it's allowed to turn North/South (N->W and
+  // S->W turns forbidden), implemented statelessly per-hop as "West is the
+  // only candidate while curX > dstX". When `fullyAdaptive` is true, the
+  // caller instead guarantees deadlock-freedom via an escape channel
+  // (Duato's protocol), so no turn restriction is needed here at all.
+  const needsWest = !fullyAdaptive && curX > dstX;
   const minimal: Candidate[] = [];
   if (curX < dstX) minimal.push({ port: 'EAST', nextX: curX + 1, nextY: curY });
-  else if (needsWest) minimal.push({ port: 'WEST', nextX: curX - 1, nextY: curY });
+  else if (curX > dstX) minimal.push({ port: 'WEST', nextX: curX - 1, nextY: curY });
   if (!needsWest) {
     if (curY < dstY) minimal.push({ port: 'SOUTH', nextX: curX, nextY: curY + 1 });
     else if (curY > dstY) minimal.push({ port: 'NORTH', nextX: curX, nextY: curY - 1 });
@@ -257,8 +309,17 @@ export class RoutingEngine {
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
+    const { canEscape, escapeVC } = getEscapeInfo(config);
 
-    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks);
+    // Already committed to the escape channel: Duato's protocol requires
+    // staying deterministic-XY for the rest of this flit's journey, which
+    // is what keeps the escape channel's dependency graph cycle-free.
+    if (canEscape && flit.currentVC === escapeVC) {
+      const dec = this.computeBaselineXY(curX, curY, dstX, dstY);
+      return { ...dec, selectedVC: escapeVC, algorithmUsed: 'ADAPTIVE_DYXY', reason: `DyXY (escape channel): ${dec.reason}` };
+    }
+
+    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks, canEscape);
     const avoidedFault = avoided[0]
       ? { x: avoided[0].x, y: avoided[0].y, kind: avoided[0].kind, wasDeflection: false }
       : undefined;
@@ -268,31 +329,31 @@ export class RoutingEngine {
     // returns a decision; the link-level fault check downstream is what
     // actually stops the flit from moving in that case.
     const possiblePorts = usable.length > 0 ? usable : minimalFallback.map((c) => ({ ...c, deflected: false }));
+    const nextAdaptiveVC = canEscape ? (flit.currentVC + 1) % escapeVC : (flit.currentVC + 1) % config.virtualChannels;
 
-    if (possiblePorts.length === 1) {
-      const c = possiblePorts[0];
+    // Duato: only candidates whose target channel (this exact port+VC on the
+    // neighbor) still has a free slot are safe to use adaptively.
+    const notFull = possiblePorts.filter((c) => !canEscape || !isTargetChannelFull(c, nextAdaptiveVC, config, allRouters));
+
+    if (canEscape && notFull.length === 0) {
+      const dec = this.computeBaselineXY(curX, curY, dstX, dstY);
       return {
-        nextPort: c.port,
-        nextX: c.nextX,
-        nextY: c.nextY,
-        selectedVC: (flit.currentVC + 1) % config.virtualChannels,
+        ...dec,
+        selectedVC: escapeVC,
         algorithmUsed: 'ADAPTIVE_DYXY',
-        reason: c.deflected
-          ? `DyXY Fault-Deflect: minimal direction(s) blocked by fault, deflected via ${c.port}`
-          : 'Single minimal dimension available',
-        avoidedFault: c.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
+        reason: 'DyXY: escaping to deterministic XY (every adaptive candidate channel is full)',
+        avoidedFault,
       };
     }
 
-    // Compare local downstream buffer occupancy between the usable candidates
-    let bestCandidate = possiblePorts[0];
+    const scoringPool = notFull.length > 0 ? notFull : possiblePorts;
+
+    // Among the safe candidates, pick the least-congested (single candidate is trivially "best").
+    let bestCandidate = scoringPool[0];
     let lowestOccupancy = Infinity;
-
-    for (const cand of possiblePorts) {
-      const neighborId = cand.nextY * config.meshWidth + cand.nextX;
-      const neighbor = allRouters.get(neighborId);
+    for (const cand of scoringPool) {
+      const neighbor = allRouters.get(cand.nextY * config.meshWidth + cand.nextX);
       const occupancy = neighbor ? neighbor.congestionScore : 0.5;
-
       if (occupancy < lowestOccupancy) {
         lowestOccupancy = occupancy;
         bestCandidate = cand;
@@ -303,9 +364,11 @@ export class RoutingEngine {
       nextPort: bestCandidate.port,
       nextX: bestCandidate.nextX,
       nextY: bestCandidate.nextY,
-      selectedVC: (flit.currentVC + 1) % config.virtualChannels,
+      selectedVC: nextAdaptiveVC,
       algorithmUsed: 'ADAPTIVE_DYXY',
-      reason: `DyXY: Selected ${bestCandidate.port} (Downstream buffer load: ${(lowestOccupancy * 100).toFixed(1)}%)`,
+      reason: bestCandidate.deflected
+        ? `DyXY Fault-Deflect: minimal direction(s) blocked by fault, deflected via ${bestCandidate.port}`
+        : `DyXY: Selected ${bestCandidate.port} (Downstream buffer load: ${(lowestOccupancy * 100).toFixed(1)}%)`,
       avoidedFault: bestCandidate.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
     };
   }
@@ -322,20 +385,43 @@ export class RoutingEngine {
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
+    const { canEscape, escapeVC } = getEscapeInfo(config);
 
-    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks);
+    if (canEscape && flit.currentVC === escapeVC) {
+      const dec = this.computeBaselineXY(curX, curY, dstX, dstY);
+      return { ...dec, selectedVC: escapeVC, algorithmUsed: 'CONGESTION_AWARE_RCA', reason: `RCA (escape channel): ${dec.reason}` };
+    }
+
+    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks, canEscape);
     const avoidedFault = avoided[0]
       ? { x: avoided[0].x, y: avoided[0].y, kind: avoided[0].kind, wasDeflection: false }
       : undefined;
     const possiblePorts = usable.length > 0 ? usable : minimalFallback.map((c) => ({ ...c, deflected: false }));
+    const nextAdaptiveVC = canEscape ? (flit.currentVC + 1) % escapeVC : flit.currentVC;
 
-    if (possiblePorts.length === 1) {
-      const c = possiblePorts[0];
+    // Duato: only candidates whose target channel still has a free slot are safe to use adaptively.
+    const notFull = possiblePorts.filter((c) => !canEscape || !isTargetChannelFull(c, nextAdaptiveVC, config, allRouters));
+
+    if (canEscape && notFull.length === 0) {
+      const dec = this.computeBaselineXY(curX, curY, dstX, dstY);
+      return {
+        ...dec,
+        selectedVC: escapeVC,
+        algorithmUsed: 'CONGESTION_AWARE_RCA',
+        reason: 'RCA: escaping to deterministic XY (every adaptive candidate channel is full)',
+        avoidedFault,
+      };
+    }
+
+    const scoringPool = notFull.length > 0 ? notFull : possiblePorts;
+
+    if (scoringPool.length === 1) {
+      const c = scoringPool[0];
       return {
         nextPort: c.port,
         nextX: c.nextX,
         nextY: c.nextY,
-        selectedVC: flit.currentVC,
+        selectedVC: nextAdaptiveVC,
         algorithmUsed: 'CONGESTION_AWARE_RCA',
         reason: c.deflected
           ? `RCA Fault-Deflect: minimal direction(s) blocked by fault, deflected via ${c.port}`
@@ -345,7 +431,7 @@ export class RoutingEngine {
     }
 
     // Evaluate 2-hop regional stress along both candidate directions
-    const scoredCandidates = possiblePorts.map((cand) => {
+    const scoredCandidates = scoringPool.map((cand) => {
       let regionalStress = 0;
       let count = 0;
 
@@ -381,7 +467,7 @@ export class RoutingEngine {
       nextPort: chosen.candidate.port,
       nextX: chosen.candidate.nextX,
       nextY: chosen.candidate.nextY,
-      selectedVC: 0,
+      selectedVC: nextAdaptiveVC,
       algorithmUsed: 'CONGESTION_AWARE_RCA',
       reason: `RCA Global: Selected ${chosen.candidate.port} (Regional path stress: ${(chosen.stress * 100).toFixed(1)}%)`,
       avoidedFault: chosen.candidate.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
