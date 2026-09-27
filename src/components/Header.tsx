@@ -11,22 +11,25 @@ import {
   Sparkles,
   Zap,
   Upload,
+  GitCompareArrows,
 } from 'lucide-react';
 import { NoCConfig, RoutingMode, WorkloadType } from '@shared/types/noc';
+
+type TabId = 'simulator' | 'compare' | 'benchmarks' | 'research';
 
 interface HeaderProps {
   config: NoCConfig;
   isRunning: boolean;
   simSpeed: number;
   currentCycle: number;
-  activeTab: 'simulator' | 'benchmarks' | 'research';
+  activeTab: TabId;
   connected: boolean;
   onTogglePlay: () => void;
   onStepCycle: (cycles: number) => void;
   onReset: () => void;
   onChangeSpeed: (speed: number) => void;
   onUpdateConfig: (partial: Partial<NoCConfig>) => void;
-  onSetActiveTab: (tab: 'simulator' | 'benchmarks' | 'research') => void;
+  onSetActiveTab: (tab: TabId) => void;
   onOpenCodeExport: () => void;
   onRunSweep: () => void;
   onUploadTrace: (file: File) => void;
@@ -104,6 +107,18 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Cpu className="w-3.5 h-3.5" />
                 Live Mesh Grid
+              </button>
+              <button
+                id="tab-compare"
+                onClick={() => onSetActiveTab('compare')}
+                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1.5 ${
+                  activeTab === 'compare'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                    : 'text-slate-400 hover:text-white hover:bg-[#21262d]'
+                }`}
+              >
+                <GitCompareArrows className="w-3.5 h-3.5" />
+                Compare
               </button>
               <button
                 id="tab-benchmarks"

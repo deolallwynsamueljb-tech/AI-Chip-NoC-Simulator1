@@ -18,7 +18,8 @@ interface EnergyParameters {
   linkTraversalPJPerFlit: number;
   staticLeakagePJPerCyclePerRouter: number;
   powerGatedLeakageReduction: number; // 0.85 = 85% leakage reduction when power gated
-  controllerDecisionPJ: number; // Proposed controller logic energy (~0.04 pJ)
+  controllerDecisionPJ: number; // Proposed controller logic energy (~0.04 pJ), charged every epoch it evaluates
+  reconfigurationEventPJ: number; // Extra one-off overhead charged only when a router ACTUALLY switches mode (route table/VC drain cost)
 }
 
 export function getEnergyParameters(config: NoCConfig): EnergyParameters {
@@ -34,6 +35,7 @@ export function getEnergyParameters(config: NoCConfig): EnergyParameters {
       staticLeakagePJPerCyclePerRouter: 0.08 * bitScale,
       powerGatedLeakageReduction: 0.88,
       controllerDecisionPJ: 0.035,
+      reconfigurationEventPJ: 0.9 * bitScale,
     };
   } else if (techNodeNm <= 14) {
     return {
@@ -44,6 +46,7 @@ export function getEnergyParameters(config: NoCConfig): EnergyParameters {
       staticLeakagePJPerCyclePerRouter: 0.18 * bitScale,
       powerGatedLeakageReduction: 0.82,
       controllerDecisionPJ: 0.065,
+      reconfigurationEventPJ: 1.8 * bitScale,
     };
   } else {
     // 28nm standard
@@ -55,6 +58,7 @@ export function getEnergyParameters(config: NoCConfig): EnergyParameters {
       staticLeakagePJPerCyclePerRouter: 0.45 * bitScale,
       powerGatedLeakageReduction: 0.78,
       controllerDecisionPJ: 0.12,
+      reconfigurationEventPJ: 4.2 * bitScale,
     };
   }
 }

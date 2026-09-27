@@ -3,8 +3,11 @@ import {
   NoCConfig,
   BenchmarkComparisonData,
   WorkloadSensitivityItem,
+  ArchitectureComparisonResult,
+  FaultSweepData,
 } from '@shared/types/noc';
 import { SweepEngine } from '@shared/engine/sweepEngine';
+import { runArchitectureComparison } from '@shared/engine/architectureComparison';
 import type { TraceEvent } from '@shared/engine/realTraces';
 import { runSensitivitySweep, runSweep } from './api/client';
 import { parseTraceFile } from './utils/traceParser';
@@ -20,6 +23,8 @@ import { RouterInspectorModal } from './components/RouterInspectorModal';
 import { CodeExportModal } from './components/CodeExportModal';
 import { ResearchOverview } from './components/ResearchOverview';
 import { AssistantPanel } from './components/AssistantPanel';
+import { ConfigurationPanel } from './components/ConfigurationPanel';
+import { ArchitectureComparisonView } from './components/ArchitectureComparisonView';
 
 const DEFAULT_CONFIG: NoCConfig = {
   meshWidth: 4,
@@ -37,9 +42,14 @@ const DEFAULT_CONFIG: NoCConfig = {
   powerGatingThreshold: 8,
   hysteresisWindows: 2,
   dwellCycles: 300,
+  faultInjectionEnabled: false,
+  faultRatePct: 0,
+  faultType: 'RANDOM_FAULT',
+  targetPacketCount: 20000,
+  simulationCycleLimit: 5000,
 };
 
-type Tab = 'simulator' | 'benchmarks' | 'research';
+type Tab = 'simulator' | 'compare' | 'benchmarks' | 'research';
 
 export default function App() {
   const [config, setConfig] = useState<NoCConfig>(DEFAULT_CONFIG);
@@ -59,6 +69,14 @@ export default function App() {
   // function has no way to see a file that was never uploaded to it.
   const [customTraceEvents, setCustomTraceEventsState] = useState<TraceEvent[] | null>(null);
   const [customTraceStatus, setCustomTraceStatus] = useState<{ text: string; isError: boolean } | null>(null);
+
+  // Architecture Comparison (Conventional vs Proposed) -- computed entirely
+  // client-side, same pattern as the CUSTOM_TRACE sweep below.
+  const [comparisonResult, setComparisonResult] = useState<ArchitectureComparisonResult | null>(null);
+  const [isRunningComparison, setIsRunningComparison] = useState(false);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
+  const [faultSweepData, setFaultSweepData] = useState<FaultSweepData | null>(null);
+  const [isSweepingFaults, setIsSweepingFaults] = useState(false);
 
   const {
     connected,
@@ -150,6 +168,33 @@ export default function App() {
       .finally(() => setIsSweeping(false));
   }, [config, customTraceEvents]);
 
+  const handleRunComparison = useCallback(() => {
+    setIsRunningComparison(true);
+    setComparisonError(null);
+    setActiveTab('compare');
+
+    // Runs synchronously in-browser (see architectureComparison.ts) --
+    // deferred a tick so the "running" state actually paints first.
+    Promise.resolve()
+      .then(() =>
+        runArchitectureComparison(config, config.workloadType === 'CUSTOM_TRACE' ? customTraceEvents ?? undefined : undefined)
+      )
+      .then((result) => setComparisonResult(result))
+      .catch((err) => setComparisonError(err instanceof Error ? err.message : 'Comparison failed'))
+      .finally(() => setIsRunningComparison(false));
+  }, [config, customTraceEvents]);
+
+  const handleRunFaultSweep = useCallback(() => {
+    setIsSweepingFaults(true);
+    setActiveTab('compare');
+
+    Promise.resolve()
+      .then(() => SweepEngine.runFaultRateSweep(config))
+      .then((data) => setFaultSweepData(data))
+      .catch((err) => setComparisonError(err instanceof Error ? err.message : 'Fault sweep failed'))
+      .finally(() => setIsSweepingFaults(false));
+  }, [config]);
+
   const selectedRouter = selectedRouterId !== null ? routers.get(selectedRouterId) || null : null;
 
   if (!metrics || !telemetry) {
@@ -204,6 +249,7 @@ export default function App() {
                   config={config}
                   selectedRouterId={selectedRouterId}
                   onSelectRouter={setSelectedRouterId}
+                  faultAvoidanceEvents={telemetry.faultAvoidanceEvents}
                 />
               </div>
 
@@ -215,6 +261,27 @@ export default function App() {
 
             {/* Bottom: Real-Time Performance & Energy Dashboard */}
             <MetricsDashboard metrics={metrics} config={config} />
+          </div>
+        )}
+
+        {/* Tab 1.5: Architecture Comparison (Conventional vs Proposed), Fault Injection & Presets */}
+        {activeTab === 'compare' && (
+          <div className="space-y-4">
+            <ConfigurationPanel
+              config={config}
+              onUpdateConfig={handleUpdateConfig}
+              onRunComparison={handleRunComparison}
+              onRunFaultSweep={handleRunFaultSweep}
+              isRunningComparison={isRunningComparison}
+              isRunningFaultSweep={isSweepingFaults}
+            />
+            <ArchitectureComparisonView
+              result={comparisonResult}
+              faultSweep={faultSweepData}
+              isRunning={isRunningComparison}
+              isSweepingFaults={isSweepingFaults}
+              error={comparisonError}
+            />
           </div>
         )}
 

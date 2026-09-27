@@ -7,6 +7,123 @@ export interface RouteDecision {
   selectedVC: number;
   algorithmUsed: RoutingMode;
   reason: string;
+  /** Set when this hop picked its port specifically because the "natural"
+   * candidate led into a faulty router/link. Only ADAPTIVE_DYXY and
+   * CONGESTION_AWARE_RCA (and therefore PROPOSED_RECONFIGURABLE, which
+   * delegates to them) are fault-aware -- BASELINE_XY and LOW_POWER_BYPASS
+   * are deterministic/static by design and never populate this. */
+  avoidedFault?: { x: number; y: number; kind: 'ROUTER_FAULT' | 'LINK_FAULT'; wasDeflection: boolean };
+}
+
+/** Set of `${x},${y}:${direction}` keys for links currently down. Threaded
+ * through the fault-aware routing functions so they can route around a
+ * faulty link even though Link objects themselves aren't passed in (router
+ * faults are read directly off RouterNode.isFaulty). */
+export type FaultyLinkSet = ReadonlySet<string>;
+export const NO_FAULTY_LINKS: FaultyLinkSet = new Set();
+
+function linkFaultKey(x: number, y: number, port: PortDirection): string {
+  return `${x},${y}:${port}`;
+}
+
+/** Why a candidate hop is unusable: out-of-bounds is a normal topology edge
+ * (not a fault); ROUTER_FAULT/LINK_FAULT are genuine faults worth logging
+ * and routing around. */
+function classifyBlock(
+  curX: number,
+  curY: number,
+  port: PortDirection,
+  nextX: number,
+  nextY: number,
+  config: NoCConfig,
+  allRouters: Map<number, RouterNode>,
+  faultyLinks: FaultyLinkSet
+): 'OUT_OF_BOUNDS' | 'ROUTER_FAULT' | 'LINK_FAULT' | null {
+  if (nextX < 0 || nextX >= config.meshWidth || nextY < 0 || nextY >= config.meshHeight) return 'OUT_OF_BOUNDS';
+  if (faultyLinks.has(linkFaultKey(curX, curY, port))) return 'LINK_FAULT';
+  const neighbor = allRouters.get(nextY * config.meshWidth + nextX);
+  if (neighbor?.isFaulty) return 'ROUTER_FAULT';
+  return null;
+}
+
+interface Candidate {
+  port: PortDirection;
+  nextX: number;
+  nextY: number;
+}
+
+/**
+ * Builds the usable candidate hop list towards (dstX, dstY): the minimal
+ * (shortest-path) X/Y directions when they're clear, or -- when every
+ * minimal direction is blocked by a fault -- deflects to a perpendicular
+ * direction that isn't. This is what gives ADAPTIVE_DYXY and
+ * CONGESTION_AWARE_RCA (and so PROPOSED_RECONFIGURABLE) their fault
+ * tolerance: a fault just removes a candidate from consideration instead
+ * of being invisible to the algorithm.
+ */
+function faultAwareCandidates(
+  curX: number,
+  curY: number,
+  dstX: number,
+  dstY: number,
+  config: NoCConfig,
+  allRouters: Map<number, RouterNode>,
+  faultyLinks: FaultyLinkSet
+): { usable: (Candidate & { deflected: boolean })[]; avoided: { x: number; y: number; kind: 'ROUTER_FAULT' | 'LINK_FAULT' }[]; minimalFallback: Candidate[] } {
+  // West-First turn model (Glass & Ni, 1992): fully-adaptive minimal
+  // routing with no restriction is NOT deadlock-free even though every hop
+  // only moves toward the destination -- cyclic channel dependencies can
+  // still form across flows. West-First breaks every such cycle with one
+  // rule: a packet that still needs to move West must do so before it's
+  // allowed to turn North/South (i.e. N->W and S->W turns are forbidden;
+  // W->N, W->S, and all turns into/out of East remain fully adaptive).
+  // Implemented statelessly per-hop: while curX > dstX, West is the ONLY
+  // candidate offered this hop -- once curX === dstX, N/S/E are fully
+  // adaptive again exactly as before.
+  const needsWest = curX > dstX;
+  const minimal: Candidate[] = [];
+  if (curX < dstX) minimal.push({ port: 'EAST', nextX: curX + 1, nextY: curY });
+  else if (needsWest) minimal.push({ port: 'WEST', nextX: curX - 1, nextY: curY });
+  if (!needsWest) {
+    if (curY < dstY) minimal.push({ port: 'SOUTH', nextX: curX, nextY: curY + 1 });
+    else if (curY > dstY) minimal.push({ port: 'NORTH', nextX: curX, nextY: curY - 1 });
+  }
+
+  const avoided: { x: number; y: number; kind: 'ROUTER_FAULT' | 'LINK_FAULT' }[] = [];
+  const usableMinimal = minimal.filter((c) => {
+    const block = classifyBlock(curX, curY, c.port, c.nextX, c.nextY, config, allRouters, faultyLinks);
+    if (block === 'ROUTER_FAULT' || block === 'LINK_FAULT') {
+      avoided.push({ x: c.nextX, y: c.nextY, kind: block });
+      return false;
+    }
+    return block === null;
+  });
+
+  if (usableMinimal.length > 0) {
+    return { usable: usableMinimal.map((c) => ({ ...c, deflected: false })), avoided, minimalFallback: minimal };
+  }
+
+  // Every minimal direction is faulty -- deflect to whichever perpendicular
+  // compass direction is actually clear, so a single fault can't strand
+  // the flit against a wall it's not allowed to route around.
+  const usedPorts = new Set(minimal.map((m) => m.port));
+  const allDirs: Candidate[] = [
+    { port: 'EAST', nextX: curX + 1, nextY: curY },
+    { port: 'WEST', nextX: curX - 1, nextY: curY },
+    { port: 'SOUTH', nextX: curX, nextY: curY + 1 },
+    { port: 'NORTH', nextX: curX, nextY: curY - 1 },
+  ];
+  const deflection = allDirs.filter(
+    (c) =>
+      !usedPorts.has(c.port) &&
+      classifyBlock(curX, curY, c.port, c.nextX, c.nextY, config, allRouters, faultyLinks) === null
+  );
+
+  return {
+    usable: deflection.map((c) => ({ ...c, deflected: true })),
+    avoided,
+    minimalFallback: minimal,
+  };
 }
 
 export class RoutingEngine {
@@ -19,7 +136,8 @@ export class RoutingEngine {
     allRouters: Map<number, RouterNode>,
     config: NoCConfig,
     activeMode: RoutingMode,
-    taskBasedPolicy: 'TB' | 'TBP' = 'TB'
+    taskBasedPolicy: 'TB' | 'TBP' = 'TB',
+    faultyLinks: FaultyLinkSet = NO_FAULTY_LINKS
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
@@ -41,10 +159,10 @@ export class RoutingEngine {
         return this.computeBaselineXY(curX, curY, dstX, dstY);
 
       case 'ADAPTIVE_DYXY':
-        return this.computeAdaptiveDyXY(flit, currentRouter, allRouters, config);
+        return this.computeAdaptiveDyXY(flit, currentRouter, allRouters, config, faultyLinks);
 
       case 'CONGESTION_AWARE_RCA':
-        return this.computeCongestionAwareRCA(flit, currentRouter, allRouters, config);
+        return this.computeCongestionAwareRCA(flit, currentRouter, allRouters, config, faultyLinks);
 
       case 'LOW_POWER_BYPASS':
         return this.computeLowPowerBypass(flit, currentRouter, allRouters, config);
@@ -55,7 +173,7 @@ export class RoutingEngine {
       case 'PROPOSED_RECONFIGURABLE':
       default:
         // Use the router's dynamically assigned mode from the configuration controller
-        return this.computeForMode(currentRouter.currentMode, flit, currentRouter, allRouters, config);
+        return this.computeForMode(currentRouter.currentMode, flit, currentRouter, allRouters, config, faultyLinks);
     }
   }
 
@@ -64,14 +182,15 @@ export class RoutingEngine {
     flit: Flit,
     currentRouter: RouterNode,
     allRouters: Map<number, RouterNode>,
-    config: NoCConfig
+    config: NoCConfig,
+    faultyLinks: FaultyLinkSet
   ): RouteDecision {
     if (mode === 'BASELINE_XY') {
       return this.computeBaselineXY(currentRouter.x, currentRouter.y, flit.dstX, flit.dstY);
     } else if (mode === 'ADAPTIVE_DYXY') {
-      return this.computeAdaptiveDyXY(flit, currentRouter, allRouters, config);
+      return this.computeAdaptiveDyXY(flit, currentRouter, allRouters, config, faultyLinks);
     } else if (mode === 'CONGESTION_AWARE_RCA') {
-      return this.computeCongestionAwareRCA(flit, currentRouter, allRouters, config);
+      return this.computeCongestionAwareRCA(flit, currentRouter, allRouters, config, faultyLinks);
     } else if (mode === 'LOW_POWER_BYPASS') {
       return this.computeLowPowerBypass(flit, currentRouter, allRouters, config);
     }
@@ -133,33 +252,39 @@ export class RoutingEngine {
     flit: Flit,
     currentRouter: RouterNode,
     allRouters: Map<number, RouterNode>,
-    config: NoCConfig
+    config: NoCConfig,
+    faultyLinks: FaultyLinkSet = NO_FAULTY_LINKS
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
 
-    const possiblePorts: { port: PortDirection; nextX: number; nextY: number }[] = [];
+    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks);
+    const avoidedFault = avoided[0]
+      ? { x: avoided[0].x, y: avoided[0].y, kind: avoided[0].kind, wasDeflection: false }
+      : undefined;
 
-    // Candidate X direction
-    if (curX < dstX) possiblePorts.push({ port: 'EAST', nextX: curX + 1, nextY: curY });
-    else if (curX > dstX) possiblePorts.push({ port: 'WEST', nextX: curX - 1, nextY: curY });
-
-    // Candidate Y direction
-    if (curY < dstY) possiblePorts.push({ port: 'SOUTH', nextX: curX, nextY: curY + 1 });
-    else if (curY > dstY) possiblePorts.push({ port: 'NORTH', nextX: curX, nextY: curY - 1 });
+    // No fault-clear candidate exists at all (fully boxed in) -- fall back
+    // to the original (possibly blocked) minimal direction so this still
+    // returns a decision; the link-level fault check downstream is what
+    // actually stops the flit from moving in that case.
+    const possiblePorts = usable.length > 0 ? usable : minimalFallback.map((c) => ({ ...c, deflected: false }));
 
     if (possiblePorts.length === 1) {
+      const c = possiblePorts[0];
       return {
-        nextPort: possiblePorts[0].port,
-        nextX: possiblePorts[0].nextX,
-        nextY: possiblePorts[0].nextY,
+        nextPort: c.port,
+        nextX: c.nextX,
+        nextY: c.nextY,
         selectedVC: (flit.currentVC + 1) % config.virtualChannels,
         algorithmUsed: 'ADAPTIVE_DYXY',
-        reason: 'Single minimal dimension available',
+        reason: c.deflected
+          ? `DyXY Fault-Deflect: minimal direction(s) blocked by fault, deflected via ${c.port}`
+          : 'Single minimal dimension available',
+        avoidedFault: c.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
       };
     }
 
-    // Compare local downstream buffer occupancy between X and Y candidates
+    // Compare local downstream buffer occupancy between the usable candidates
     let bestCandidate = possiblePorts[0];
     let lowestOccupancy = Infinity;
 
@@ -181,6 +306,7 @@ export class RoutingEngine {
       selectedVC: (flit.currentVC + 1) % config.virtualChannels,
       algorithmUsed: 'ADAPTIVE_DYXY',
       reason: `DyXY: Selected ${bestCandidate.port} (Downstream buffer load: ${(lowestOccupancy * 100).toFixed(1)}%)`,
+      avoidedFault: bestCandidate.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
     };
   }
 
@@ -191,27 +317,30 @@ export class RoutingEngine {
     flit: Flit,
     currentRouter: RouterNode,
     allRouters: Map<number, RouterNode>,
-    config: NoCConfig
+    config: NoCConfig,
+    faultyLinks: FaultyLinkSet = NO_FAULTY_LINKS
   ): RouteDecision {
     const { x: curX, y: curY } = currentRouter;
     const { dstX, dstY } = flit;
 
-    const possiblePorts: { port: PortDirection; nextX: number; nextY: number }[] = [];
-
-    if (curX < dstX) possiblePorts.push({ port: 'EAST', nextX: curX + 1, nextY: curY });
-    else if (curX > dstX) possiblePorts.push({ port: 'WEST', nextX: curX - 1, nextY: curY });
-
-    if (curY < dstY) possiblePorts.push({ port: 'SOUTH', nextX: curX, nextY: curY + 1 });
-    else if (curY > dstY) possiblePorts.push({ port: 'NORTH', nextX: curX, nextY: curY - 1 });
+    const { usable, avoided, minimalFallback } = faultAwareCandidates(curX, curY, dstX, dstY, config, allRouters, faultyLinks);
+    const avoidedFault = avoided[0]
+      ? { x: avoided[0].x, y: avoided[0].y, kind: avoided[0].kind, wasDeflection: false }
+      : undefined;
+    const possiblePorts = usable.length > 0 ? usable : minimalFallback.map((c) => ({ ...c, deflected: false }));
 
     if (possiblePorts.length === 1) {
+      const c = possiblePorts[0];
       return {
-        nextPort: possiblePorts[0].port,
-        nextX: possiblePorts[0].nextX,
-        nextY: possiblePorts[0].nextY,
+        nextPort: c.port,
+        nextX: c.nextX,
+        nextY: c.nextY,
         selectedVC: flit.currentVC,
         algorithmUsed: 'CONGESTION_AWARE_RCA',
-        reason: 'RCA: Single minimal direction towards target',
+        reason: c.deflected
+          ? `RCA Fault-Deflect: minimal direction(s) blocked by fault, deflected via ${c.port}`
+          : 'RCA: Single minimal direction towards target',
+        avoidedFault: c.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
       };
     }
 
@@ -255,6 +384,7 @@ export class RoutingEngine {
       selectedVC: 0,
       algorithmUsed: 'CONGESTION_AWARE_RCA',
       reason: `RCA Global: Selected ${chosen.candidate.port} (Regional path stress: ${(chosen.stress * 100).toFixed(1)}%)`,
+      avoidedFault: chosen.candidate.deflected && avoidedFault ? { ...avoidedFault, wasDeflection: true } : avoidedFault,
     };
   }
 

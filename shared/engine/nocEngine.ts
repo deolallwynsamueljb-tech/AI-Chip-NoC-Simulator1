@@ -1,4 +1,6 @@
 import {
+  FaultAvoidanceEvent,
+  FaultSummary,
   Flit,
   Link,
   NoCConfig,
@@ -14,6 +16,7 @@ import { getEnergyParameters } from './energyModel.js';
 import { RoutingEngine } from './routingAlgorithms.js';
 import { TrafficGenerator } from './trafficGenerators.js';
 import { TraceEvent } from './realTraces.js';
+import { computeFaultPlacement, FaultPlacement, linkKey, NO_FAULTS } from './faultModel.js';
 
 export class NoCSimulator {
   private config: NoCConfig;
@@ -27,6 +30,7 @@ export class NoCSimulator {
   private totalInjectedFlits = 0;
   private totalDeliveredPackets = 0;
   private totalDeliveredFlits = 0;
+  private totalDroppedFlits = 0;
   private deliveredLatencies: number[] = [];
   private accumulatedEnergy = {
     staticLeakage: 0,
@@ -34,7 +38,17 @@ export class NoCSimulator {
     crossbarDynamic: 0,
     linkDynamic: 0,
     controllerDynamic: 0,
+    reconfigurationDynamic: 0,
   };
+
+  // Fault placement (which routers/links are down). Auto-rolled from config
+  // on topology (re)build; can be overridden with an externally-computed
+  // placement via setFaultPlacement() so two simulators (baseline vs
+  // proposed) can be compared against the IDENTICAL fault set.
+  private faultPlacement: FaultPlacement = NO_FAULTS;
+  private faultyRouterIdSet: Set<number> = new Set();
+  private faultyLinkKeySet: Set<string> = new Set();
+  private faultAvoidanceEvents: FaultAvoidanceEvent[] = [];
 
   // Telemetry & sliding window analysis
   private recentHopDistances: number[] = [];
@@ -80,6 +94,7 @@ export class NoCSimulator {
       controllerOverheadEnergyPJ: 0,
       taskBasedActivePolicy: null,
       history: [],
+      faultAvoidanceEvents: [],
     };
     this.initializeTopology();
   }
@@ -94,6 +109,7 @@ export class NoCSimulator {
     this.totalInjectedFlits = 0;
     this.totalDeliveredPackets = 0;
     this.totalDeliveredFlits = 0;
+    this.totalDroppedFlits = 0;
     this.deliveredLatencies = [];
     this.recentHopDistances = [];
     this.recentArrivals = [];
@@ -114,7 +130,9 @@ export class NoCSimulator {
       crossbarDynamic: 0,
       linkDynamic: 0,
       controllerDynamic: 0,
+      reconfigurationDynamic: 0,
     };
+    this.faultAvoidanceEvents = [];
     this.telemetry = {
       spatialLocalityIndex: 0.5,
       globalHotspotPressure: 0.2,
@@ -127,16 +145,22 @@ export class NoCSimulator {
       controllerOverheadEnergyPJ: 0,
       taskBasedActivePolicy: null,
       history: [],
+      faultAvoidanceEvents: [],
     };
     this.initializeTopology();
   }
 
   public updateConfig(newConfig: NoCConfig) {
-    const topologyChanged = 
+    const topologyChanged =
       newConfig.meshWidth !== this.config.meshWidth ||
       newConfig.meshHeight !== this.config.meshHeight ||
       newConfig.virtualChannels !== this.config.virtualChannels ||
       newConfig.bufferDepthPerVC !== this.config.bufferDepthPerVC;
+
+    const faultsChanged =
+      newConfig.faultInjectionEnabled !== this.config.faultInjectionEnabled ||
+      newConfig.faultRatePct !== this.config.faultRatePct ||
+      newConfig.faultType !== this.config.faultType;
 
     this.config = newConfig;
     this.trafficGen.updateConfig(newConfig);
@@ -151,7 +175,42 @@ export class NoCSimulator {
         }
       });
       this.telemetry.controllerActiveMode = newConfig.routingMode;
+
+      if (faultsChanged) {
+        this.applyFaultPlacement(computeFaultPlacement(this.config));
+      }
     }
+  }
+
+  /** Overrides the auto-rolled fault placement with an externally-computed
+   * one -- used by architectureComparison.ts so the baseline and proposed
+   * simulators fault the exact same routers/links. */
+  public setFaultPlacement(placement: FaultPlacement): void {
+    this.applyFaultPlacement(placement);
+  }
+
+  private applyFaultPlacement(placement: FaultPlacement): void {
+    this.faultPlacement = placement;
+    this.faultyRouterIdSet = new Set(placement.faultyRouterIds);
+    this.faultyLinkKeySet = new Set(placement.faultyLinkKeys);
+
+    this.routers.forEach((r) => {
+      r.isFaulty = this.faultyRouterIdSet.has(r.id);
+    });
+    this.links.forEach((l) => {
+      l.isFaulty = this.faultyLinkKeySet.has(linkKey(l.srcX, l.srcY, l.direction));
+    });
+    this.trafficGen.setFaultyRouters(this.faultyRouterIdSet);
+  }
+
+  public getFaultSummary(): FaultSummary {
+    return {
+      enabled: this.config.faultInjectionEnabled,
+      faultType: this.config.faultType,
+      faultRatePct: this.config.faultRatePct,
+      faultyRouterIds: [...this.faultyRouterIdSet],
+      faultyLinkKeys: [...this.faultyLinkKeySet],
+    };
   }
 
   /** Loads a user-uploaded trace for the CUSTOM_TRACE workload. */
@@ -191,6 +250,7 @@ export class NoCSimulator {
           y,
           id,
           currentMode: routingMode,
+          isFaulty: false,
           buffers,
           activeFlitsInSwitch: [],
           totalInjected: 0,
@@ -236,6 +296,7 @@ export class NoCSimulator {
             busyCycles: 0,
             totalTransversals: 0,
             energyPJ: 0,
+            isFaulty: false,
           });
           this.links.push({
             srcX: x + 1,
@@ -247,6 +308,7 @@ export class NoCSimulator {
             busyCycles: 0,
             totalTransversals: 0,
             energyPJ: 0,
+            isFaulty: false,
           });
         }
         // Vertical link (South)
@@ -261,6 +323,7 @@ export class NoCSimulator {
             busyCycles: 0,
             totalTransversals: 0,
             energyPJ: 0,
+            isFaulty: false,
           });
           this.links.push({
             srcX: x,
@@ -272,10 +335,16 @@ export class NoCSimulator {
             busyCycles: 0,
             totalTransversals: 0,
             energyPJ: 0,
+            isFaulty: false,
           });
         }
       }
     }
+
+    // 3. Roll fault placement for the new topology. A caller that wants a
+    // SPECIFIC (e.g. shared-with-another-sim) placement calls
+    // setFaultPlacement() right after this, which simply overrides it.
+    this.applyFaultPlacement(computeFaultPlacement(this.config));
   }
 
   /**
@@ -295,6 +364,24 @@ export class NoCSimulator {
 
     // 3. Router Switch Allocation & Crossbar Traversal (Moving flits from input buffers to output ports/links)
     this.processRouterPipelines(energyParams);
+
+    // 3b. Bounded flit lifetime (deadlock/gridlock RECOVERY, distinct from
+    // the routing-level deadlock AVOIDANCE in routingAlgorithms.ts). A
+    // router with no way to progress a flit -- most notably a faulty
+    // router, which never runs its pipeline again once a flit lands in its
+    // buffers -- would otherwise hold that buffer slot (and the upstream
+    // link feeding it) forever, and that backpressure cascades outward
+    // until it consumes the whole network's buffer capacity. Real
+    // networks bound this with a TTL; this does the same, and applies
+    // identically to every routing mode, so it recovers gridlock without
+    // favoring either architecture.
+    this.processFlitTimeouts();
+
+    // Fault-avoidance events are pushed every cycle (not just per-epoch) --
+    // keep telemetry's copy current so a live "reconfiguration events" feed
+    // doesn't lag behind by up to a full epoch. New object + new array so
+    // consumers relying on reference identity (React state) see the update.
+    this.telemetry = { ...this.telemetry, faultAvoidanceEvents: [...this.faultAvoidanceEvents] };
 
     // 4. Packet Injection from Local Processing Elements
     this.processPacketInjection(energyParams);
@@ -442,6 +529,12 @@ export class NoCSimulator {
           this.pendingMode = null;
           this.reconfigurationCounter++;
           reconfigReason = 'applied';
+
+          // Reconfiguration overhead: real cost of updating every router's
+          // route/VC state on an actual mode switch, on top of the small
+          // continuous per-epoch classification cost above.
+          const reconfigEnergy = energyParams.reconfigurationEventPJ * this.routers.size;
+          this.accumulatedEnergy.reconfigurationDynamic += reconfigEnergy;
         }
       }
 
@@ -532,6 +625,7 @@ export class NoCSimulator {
       controllerOverheadEnergyPJ: this.accumulatedEnergy.controllerDynamic,
       taskBasedActivePolicy: routingMode === 'TASK_BASED_TBP' ? this.taskBasedActivePolicy : null,
       history: [...this.decisionHistory],
+      faultAvoidanceEvents: [...this.faultAvoidanceEvents],
     };
 
     // Trim sliding window histories
@@ -597,6 +691,11 @@ export class NoCSimulator {
     const directions: PortDirection[] = ['LOCAL', 'NORTH', 'SOUTH', 'EAST', 'WEST'];
 
     this.routers.forEach((router) => {
+      // A faulty router doesn't process its pipeline at all -- flits
+      // already queued there just sit (correctly modeling a dead router,
+      // and matching how BASELINE_XY has no way to route around it).
+      if (router.isFaulty) return;
+
       // Track which output ports have been granted in this cycle (1 flit per output port per cycle)
       const allocatedOutputPorts = new Set<PortDirection>();
 
@@ -616,8 +715,23 @@ export class NoCSimulator {
               this.routers,
               this.config,
               router.currentMode,
-              this.taskBasedActivePolicy
+              this.taskBasedActivePolicy,
+              this.faultyLinkKeySet
             );
+
+            if (decision.avoidedFault) {
+              this.faultAvoidanceEvents.unshift({
+                cycle: this.currentCycle,
+                atX: router.x,
+                atY: router.y,
+                chosenPort: decision.nextPort,
+                avoidedX: decision.avoidedFault.x,
+                avoidedY: decision.avoidedFault.y,
+                avoidedKind: decision.avoidedFault.kind,
+                wasDeflection: decision.avoidedFault.wasDeflection,
+              });
+              if (this.faultAvoidanceEvents.length > 30) this.faultAvoidanceEvents.pop();
+            }
 
             const outPort = decision.nextPort;
 
@@ -655,7 +769,7 @@ export class NoCSimulator {
                     l.direction === outPort
                 );
 
-                if (link && link.flitInTransit === null) {
+                if (link && link.flitInTransit === null && !link.isFaulty) {
                   // Flit moves across Crossbar Switch onto Link
                   const flitToTransmit = buffer.flits.shift()!;
                   buffer.readCount++;
@@ -696,6 +810,42 @@ export class NoCSimulator {
           }
         }
       });
+    });
+  }
+
+  /** Generous relative to any real latency in this simulator (typical
+   * delivered latency is tens of cycles) but bounded relative to a run --
+   * only ever fires on a flit that has genuinely stopped making progress. */
+  private getFlitTimeoutCycles(): number {
+    return Math.max(200, 20 * (this.config.meshWidth + this.config.meshHeight));
+  }
+
+  /**
+   * FLIT TIMEOUT (deadlock/gridlock recovery): drops any flit that has been
+   * alive longer than getFlitTimeoutCycles() without being delivered,
+   * whether it's queued at a router (most commonly: landed in a faulty
+   * router's buffer, which never processes its pipeline again) or stalled
+   * mid-link. Frees the buffer slot / link it was occupying so backpressure
+   * doesn't cascade indefinitely. Applies uniformly regardless of routing
+   * mode -- it recovers from gridlock, it doesn't pick a winner.
+   */
+  private processFlitTimeouts(): void {
+    const timeout = this.getFlitTimeoutCycles();
+
+    this.routers.forEach((router) => {
+      router.buffers.forEach((buffer) => {
+        while (buffer.flits.length > 0 && this.currentCycle - buffer.flits[0].creationCycle > timeout) {
+          buffer.flits.shift();
+          this.totalDroppedFlits++;
+        }
+      });
+    });
+
+    this.links.forEach((link) => {
+      if (link.flitInTransit && this.currentCycle - link.flitInTransit.creationCycle > timeout) {
+        link.flitInTransit = null;
+        this.totalDroppedFlits++;
+      }
     });
   }
 
@@ -855,7 +1005,8 @@ export class NoCSimulator {
       this.accumulatedEnergy.bufferDynamic +
       this.accumulatedEnergy.crossbarDynamic +
       this.accumulatedEnergy.linkDynamic +
-      this.accumulatedEnergy.controllerDynamic;
+      this.accumulatedEnergy.controllerDynamic +
+      this.accumulatedEnergy.reconfigurationDynamic;
 
     let avgLatency = 0;
     let maxLatency = 0;
@@ -885,6 +1036,8 @@ export class NoCSimulator {
     const flitsInFlight = this.totalInjectedFlits - this.totalDeliveredFlits;
     const energyPerFlit = this.totalDeliveredFlits > 0 ? totalEnergy / this.totalDeliveredFlits : 0;
     const edp = avgLatency * totalEnergy;
+    const packetDeliveryRatioPct =
+      this.totalInjectedPackets > 0 ? (this.totalDeliveredPackets / this.totalInjectedPackets) * 100 : 100;
 
     return {
       currentCycle: this.currentCycle,
@@ -905,8 +1058,17 @@ export class NoCSimulator {
       energyDelayProduct: edp,
       saturationDetected: this.isSaturated,
       saturationCycle: this.saturationCycle,
+      packetDeliveryRatioPct,
+      totalDroppedFlits: this.totalDroppedFlits,
       energyBreakdown: { ...this.accumulatedEnergy },
     };
+  }
+
+  /** Cheap O(1) progress check (unlike getMetrics(), which sorts the full
+   * delivered-latency array) -- for a runner loop deciding whether to stop
+   * early once a target packet count has been injected. */
+  public getTotalInjectedPackets(): number {
+    return this.totalInjectedPackets;
   }
 
   public getRouters(): Map<number, RouterNode> {

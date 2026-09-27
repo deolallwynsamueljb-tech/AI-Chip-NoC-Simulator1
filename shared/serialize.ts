@@ -13,5 +13,6 @@ export function buildSnapshot(sim: NoCSimulator): SimulationSnapshot {
     routers,
     links: sim.getLinks(),
     config: sim.getConfig(),
+    faults: sim.getFaultSummary(),
   };
 }

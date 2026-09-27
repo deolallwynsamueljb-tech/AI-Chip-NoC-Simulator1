@@ -37,6 +37,13 @@ export class TrafficGenerator {
   // setCustomTraceEvents() before or after CUSTOM_TRACE is selected.
   private customTraceEvents: TraceEvent[] | null = null;
 
+  // Nodes currently down (router fault) -- neither a valid source nor a
+  // valid destination, since a faulty PE can't inject or receive traffic.
+  // Set once per fault placement by NoCSimulator, shared with the routing
+  // layer's own fault awareness so a "dead" node behaves consistently
+  // everywhere in the sim.
+  private faultyRouterIds: Set<number> = new Set();
+
   constructor(config: NoCConfig) {
     this.config = config;
     this.moeCurrentExpertX = Math.floor(config.meshWidth / 2);
@@ -55,6 +62,44 @@ export class TrafficGenerator {
   public setCustomTraceEvents(events: TraceEvent[]): void {
     this.customTraceEvents = events;
     if (this.config.workloadType === 'CUSTOM_TRACE') this.setupTraceReplayIfNeeded();
+  }
+
+  /** Replaces the set of faulty (down) router ids. Called by NoCSimulator
+   * whenever fault placement is (re)established. */
+  public setFaultyRouters(ids: Iterable<number>): void {
+    this.faultyRouterIds = new Set(ids);
+  }
+
+  private isFaultyNode(x: number, y: number): boolean {
+    if (this.faultyRouterIds.size === 0) return false;
+    return this.faultyRouterIds.has(y * this.config.meshWidth + x);
+  }
+
+  /** When the "natural" destination for a pattern lands on a faulty node,
+   * resample rather than send traffic into a dead PE -- a real system
+   * wouldn't address a downed node either. Small random probe first (cheap,
+   * fine unless fault density is very high), then an exhaustive scan as a
+   * fallback so this never silently drops traffic under a merely unlucky
+   * random draw. */
+  private avoidFaultyDestination(srcX: number, srcY: number, fallback: TrafficTarget): TrafficTarget {
+    const { meshWidth, meshHeight } = this.config;
+    const total = meshWidth * meshHeight;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const id = Math.floor(Math.random() * total);
+      const x = id % meshWidth;
+      const y = Math.floor(id / meshWidth);
+      if ((x !== srcX || y !== srcY) && !this.faultyRouterIds.has(id)) {
+        return { dstX: x, dstY: y, priority: fallback.priority };
+      }
+    }
+    for (let id = 0; id < total; id++) {
+      const x = id % meshWidth;
+      const y = Math.floor(id / meshWidth);
+      if ((x !== srcX || y !== srcY) && !this.faultyRouterIds.has(id)) {
+        return { dstX: x, dstY: y, priority: fallback.priority };
+      }
+    }
+    return fallback; // every other node is faulty too -- nothing better to do
   }
 
   private setupTraceReplayIfNeeded() {
@@ -107,6 +152,8 @@ export class TrafficGenerator {
   public shouldInject(srcX: number, srcY: number, cycle: number): boolean {
     const { workloadType, injectionRate, meshWidth, meshHeight } = this.config;
 
+    if (this.isFaultyNode(srcX, srcY)) return false; // a downed PE can't inject
+
     if (this.traceWorkload === workloadType && isTraceWorkload(workloadType)) {
       const next = this.nextTraceEvent(srcX, srcY);
       if (!next) return false;
@@ -142,6 +189,12 @@ export class TrafficGenerator {
    * Compute destination node (dstX, dstY) for a packet injected at (srcX, srcY)
    */
   public getDestination(srcX: number, srcY: number, cycle: number): TrafficTarget {
+    const raw = this.computeRawDestination(srcX, srcY, cycle);
+    if (!this.isFaultyNode(raw.dstX, raw.dstY)) return raw;
+    return this.avoidFaultyDestination(srcX, srcY, raw);
+  }
+
+  private computeRawDestination(srcX: number, srcY: number, cycle: number): TrafficTarget {
     const { workloadType, meshWidth, meshHeight } = this.config;
 
     if (this.traceWorkload === workloadType && isTraceWorkload(workloadType)) {
@@ -212,6 +265,39 @@ export class TrafficGenerator {
         const dstY = meshHeight - 1 - srcY;
         if (dstX === srcX && dstY === srcY) {
           return { dstX: (srcX + 1) % meshWidth, dstY: (srcY + 1) % meshHeight, priority: 1 };
+        }
+        return { dstX, dstY, priority: 1 };
+      }
+
+      case 'TRANSPOSE': {
+        // Classic synthetic NoC pattern: node (x,y) sends to (y,x). Only a
+        // true involution on a square mesh; on a rectangular one it clamps,
+        // which is an honest approximation, not a hidden bug.
+        let dstX = Math.min(meshWidth - 1, srcY);
+        let dstY = Math.min(meshHeight - 1, srcX);
+        if (dstX === srcX && dstY === srcY) {
+          dstX = (srcX + 1) % meshWidth;
+        }
+        return { dstX, dstY, priority: 1 };
+      }
+
+      case 'BIT_REVERSAL': {
+        // Classic synthetic NoC pattern: reverse the bits of the flat node
+        // id and route there.
+        const total = meshWidth * meshHeight;
+        const bits = Math.max(1, Math.ceil(Math.log2(total)));
+        const srcId = srcY * meshWidth + srcX;
+        let reversed = 0;
+        for (let b = 0; b < bits; b++) {
+          if (srcId & (1 << b)) reversed |= 1 << (bits - 1 - b);
+        }
+        let dstId = reversed % total;
+        let dstX = dstId % meshWidth;
+        let dstY = Math.floor(dstId / meshWidth);
+        if (dstX === srcX && dstY === srcY) {
+          dstId = (dstId + 1) % total;
+          dstX = dstId % meshWidth;
+          dstY = Math.floor(dstId / meshWidth);
         }
         return { dstX, dstY, priority: 1 };
       }

@@ -1,6 +1,15 @@
-import { BenchmarkComparisonData, NoCConfig, RoutingMode, SweepPoint, WorkloadType } from '../types/noc.js';
+import {
+  BenchmarkComparisonData,
+  FaultSweepData,
+  FaultSweepPoint,
+  NoCConfig,
+  RoutingMode,
+  SweepPoint,
+  WorkloadType,
+} from '../types/noc.js';
 import { NoCSimulator } from './nocEngine.js';
 import { TraceEvent } from './realTraces.js';
+import { computeFaultPlacement } from './faultModel.js';
 
 export class SweepEngine {
   public static readonly DEFAULT_RATES = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60];
@@ -82,9 +91,90 @@ export class SweepEngine {
       throughput: Number(m.throughputFlitsPerNodeCycle.toFixed(4)),
       bufferOccupancyPct: Number(m.averageBufferOccupancyPct.toFixed(1)),
       energyPerFlitPJ: Number(m.energyPerFlitPJ.toFixed(2)),
-      energyDelayProduct: Number((m.averagePacketLatency * m.energyPerFlitPJ).toFixed(2)),
+      // Total Energy x Average Latency (matches SimulationMetrics.energyDelayProduct exactly).
+      energyDelayProduct: Number(m.energyDelayProduct.toFixed(2)),
       isSaturated: m.saturationDetected || m.averageBufferOccupancyPct > 80,
+      packetDeliveryRatioPct: Number(m.packetDeliveryRatioPct.toFixed(2)),
     };
+  }
+
+  /**
+   * Simulate a single operating point with a caller-provided fault
+   * placement, so a baseline-vs-proposed comparison at a given fault rate
+   * faults the EXACT same routers/links in both runs.
+   */
+  private static simulatePointWithFaults(
+    baseConfig: NoCConfig,
+    mode: RoutingMode,
+    faultRatePct: number,
+    faultPlacement: ReturnType<typeof computeFaultPlacement>,
+    injectionRate: number,
+    warmupAndMeasureCycles: number
+  ): FaultSweepPoint {
+    const config: NoCConfig = {
+      ...baseConfig,
+      routingMode: mode,
+      injectionRate,
+      faultInjectionEnabled: faultRatePct > 0,
+      faultRatePct,
+    };
+
+    const sim = new NoCSimulator(config);
+    sim.setFaultPlacement(faultPlacement);
+    sim.stepCycles(150);
+    sim.stepCycles(warmupAndMeasureCycles);
+
+    const m = sim.getMetrics();
+    return {
+      injectionRate,
+      faultRatePct,
+      avgLatency: Number(m.averagePacketLatency.toFixed(2)),
+      maxLatency: Number(m.maxPacketLatency.toFixed(2)),
+      tailLatencyP99: Number(m.tailLatencyP99.toFixed(2)),
+      throughput: Number(m.throughputFlitsPerNodeCycle.toFixed(4)),
+      bufferOccupancyPct: Number(m.averageBufferOccupancyPct.toFixed(1)),
+      energyPerFlitPJ: Number(m.energyPerFlitPJ.toFixed(2)),
+      energyDelayProduct: Number(m.energyDelayProduct.toFixed(2)),
+      isSaturated: m.saturationDetected || m.averageBufferOccupancyPct > 80,
+      packetDeliveryRatioPct: Number(m.packetDeliveryRatioPct.toFixed(2)),
+    };
+  }
+
+  /**
+   * Sweep fault rate (at a fixed injection rate) for BASELINE_XY vs
+   * PROPOSED_RECONFIGURABLE, faulting the identical routers/links in both
+   * runs at each rate -- isolates the effect of the fault itself from
+   * random placement luck.
+   */
+  public static runFaultRateSweep(
+    baseConfig: NoCConfig,
+    faultRates: number[] = [0, 5, 10, 15, 20],
+    cyclesPerPoint: number = 500
+  ): FaultSweepData {
+    const results: FaultSweepData['results'] = { BASELINE_XY: [], PROPOSED_RECONFIGURABLE: [] };
+
+    faultRates.forEach((rate) => {
+      const placement = computeFaultPlacement({
+        ...baseConfig,
+        faultInjectionEnabled: rate > 0,
+        faultRatePct: rate,
+      });
+      results.BASELINE_XY.push(
+        this.simulatePointWithFaults(baseConfig, 'BASELINE_XY', rate, placement, baseConfig.injectionRate, cyclesPerPoint)
+      );
+      results.PROPOSED_RECONFIGURABLE.push(
+        this.simulatePointWithFaults(
+          baseConfig,
+          'PROPOSED_RECONFIGURABLE',
+          rate,
+          placement,
+          baseConfig.injectionRate,
+          cyclesPerPoint
+        )
+      );
+    });
+
+    return { faultRates, faultType: baseConfig.faultType, results };
   }
 
   /**

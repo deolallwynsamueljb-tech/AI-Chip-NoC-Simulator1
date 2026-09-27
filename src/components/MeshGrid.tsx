@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   ArrowDown,
@@ -9,9 +9,10 @@ import {
   Eye,
   Layers,
   Sparkles,
+  X,
   Zap,
 } from 'lucide-react';
-import { Link, NoCConfig, SerializedRouterNode } from '@shared/types/noc';
+import { FaultAvoidanceEvent, Link, NoCConfig, SerializedRouterNode } from '@shared/types/noc';
 
 interface MeshGridProps {
   routers: Map<number, SerializedRouterNode>;
@@ -19,6 +20,11 @@ interface MeshGridProps {
   config: NoCConfig;
   selectedRouterId: number | null;
   onSelectRouter: (id: number) => void;
+  /** Optional -- when provided, the most recent fault-deflection hops are
+   * highlighted on the link overlay so a fault reroute is visible, not just
+   * logged. Omit for read-only comparison views that don't need it. */
+  faultAvoidanceEvents?: FaultAvoidanceEvent[];
+  title?: string;
 }
 
 type HeatmapMode = 'OCCUPANCY' | 'ROUTING_MODE' | 'ENERGY' | 'TEMPERATURE';
@@ -29,9 +35,68 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
   config,
   selectedRouterId,
   onSelectRouter,
+  faultAvoidanceEvents = [],
+  title,
 }) => {
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>('OCCUPANCY');
   const { meshWidth, meshHeight } = config;
+
+  // Recent fault-deflection hops, as a lookup from "which link" to how
+  // recent (0 = most recent) -- used to pulse those specific edges on the
+  // overlay so a reroute-around-a-fault is visually traceable, not just a
+  // log entry.
+  const recentAvoidanceByLink = useMemo(() => {
+    const map = new Map<string, number>();
+    faultAvoidanceEvents.slice(0, 8).forEach((ev, idx) => {
+      const key = `${ev.atX},${ev.atY}:${ev.chosenPort}`;
+      if (!map.has(key)) map.set(key, idx);
+    });
+    return map;
+  }, [faultAvoidanceEvents]);
+
+  // Undirected link list for the overlay: one SVG line per physical link
+  // (not per direction), carrying the worse-of-two-endpoints congestion,
+  // fault state, in-flight-flit state (either direction), and recency of
+  // any fault-avoidance event on it.
+  const overlayLinks = useMemo(() => {
+    const seen = new Set<string>();
+    const result: {
+      x1: number; y1: number; x2: number; y2: number;
+      isFaulty: boolean;
+      hasFlit: boolean;
+      congestion: number;
+      avoidanceRecency: number | null;
+    }[] = [];
+
+    links.forEach((l) => {
+      const undirectedKey = [`${l.srcX},${l.srcY}`, `${l.dstX},${l.dstY}`].sort().join('|');
+      if (seen.has(undirectedKey)) return;
+      seen.add(undirectedKey);
+
+      const reverse = links.find((r) => r.srcX === l.dstX && r.srcY === l.dstY && r.dstX === l.srcX && r.dstY === l.srcY);
+      const srcRouter = routers.get(l.srcY * meshWidth + l.srcX);
+      const dstRouter = routers.get(l.dstY * meshWidth + l.dstX);
+
+      const avoidKeyFwd = `${l.srcX},${l.srcY}:${l.direction}`;
+      const avoidKeyRev = reverse ? `${reverse.srcX},${reverse.srcY}:${reverse.direction}` : null;
+      const recencyFwd = recentAvoidanceByLink.get(avoidKeyFwd);
+      const recencyRev = avoidKeyRev ? recentAvoidanceByLink.get(avoidKeyRev) : undefined;
+      const recency = [recencyFwd, recencyRev].filter((v): v is number => v !== undefined).sort((a, b) => a - b)[0];
+
+      result.push({
+        x1: l.srcX + 0.5,
+        y1: l.srcY + 0.5,
+        x2: l.dstX + 0.5,
+        y2: l.dstY + 0.5,
+        isFaulty: l.isFaulty || !!reverse?.isFaulty,
+        hasFlit: l.flitInTransit !== null || reverse?.flitInTransit !== null,
+        congestion: Math.max(srcRouter?.congestionScore ?? 0, dstRouter?.congestionScore ?? 0),
+        avoidanceRecency: recency ?? null,
+      });
+    });
+
+    return result;
+  }, [links, routers, meshWidth, recentAvoidanceByLink]);
 
   // Helper for color coding tile based on heatmap
   const getTileStyle = (router: SerializedRouterNode, occupancyPct: number) => {
@@ -85,7 +150,7 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-emerald-400" />
             <h2 className="text-xs font-bold font-mono tracking-tight text-white uppercase">
-              Mesh NoC Visualizer ({meshWidth}&times;{meshHeight} Grid Topology)
+              {title ?? `Mesh NoC Visualizer (${meshWidth}×${meshHeight} Grid Topology)`}
             </h2>
           </div>
           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -131,11 +196,88 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
       {/* 2D Mesh Canvas & Grid */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 bg-[var(--bg-deep)] rounded border border-[var(--border-subtle)]">
         <div
-          className="grid gap-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-2xl"
+          className="relative grid gap-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-2xl"
           style={{
             gridTemplateColumns: `repeat(${meshWidth}, minmax(0, 1fr))`,
           }}
         >
+          {/* Link overlay: physical links between routers, colored by
+              congestion/fault state, with a pulse on in-flight flits and
+              recent fault-avoidance reroutes. Sits under the tiles (which
+              have opaque backgrounds), so it's visible only in the gaps --
+              exactly where the connecting wire between two routers reads. */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox={`0 0 ${meshWidth} ${meshHeight}`}
+            preserveAspectRatio="none"
+          >
+            {overlayLinks.map((l, i) => {
+              // Inset both ends so the drawn segment lives mostly in the
+              // gap between tiles instead of running under their content.
+              const dx = l.x2 - l.x1;
+              const dy = l.y2 - l.y1;
+              const len = Math.hypot(dx, dy) || 1;
+              const inset = Math.min(0.36, len * 0.4);
+              const ux = (dx / len) * inset;
+              const uy = (dy / len) * inset;
+              const lx1 = l.x1 + ux;
+              const ly1 = l.y1 + uy;
+              const lx2 = l.x2 - ux;
+              const ly2 = l.y2 - uy;
+
+              const isRecentAvoidance = l.avoidanceRecency !== null;
+              let stroke = 'rgba(100,116,139,0.35)'; // idle
+              let strokeWidth = 0.035;
+              let dash: string | undefined;
+
+              if (l.congestion > 0.05) {
+                const t = Math.min(1, l.congestion);
+                stroke = t > 0.6 ? 'rgba(239,68,68,0.55)' : t > 0.3 ? 'rgba(234,179,8,0.5)' : 'rgba(52,211,153,0.4)';
+                strokeWidth = 0.05;
+              }
+              if (isRecentAvoidance) {
+                stroke = 'rgba(217,119,6,0.9)';
+                strokeWidth = 0.09;
+              }
+              if (l.isFaulty) {
+                stroke = 'rgba(239,68,68,0.9)';
+                strokeWidth = 0.07;
+                dash = '0.12,0.08';
+              }
+
+              return (
+                <g key={i}>
+                  <line
+                    x1={lx1}
+                    y1={ly1}
+                    x2={lx2}
+                    y2={ly2}
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={dash}
+                    strokeLinecap="round"
+                  />
+                  {l.isFaulty && (
+                    <g transform={`translate(${(l.x1 + l.x2) / 2}, ${(l.y1 + l.y2) / 2})`}>
+                      <circle r={0.11} fill="rgba(127,29,29,0.95)" stroke="rgba(248,113,113,0.9)" strokeWidth={0.02} />
+                      <line x1={-0.05} y1={-0.05} x2={0.05} y2={0.05} stroke="#fca5a5" strokeWidth={0.025} />
+                      <line x1={-0.05} y1={0.05} x2={0.05} y2={-0.05} stroke="#fca5a5" strokeWidth={0.025} />
+                    </g>
+                  )}
+                  {!l.isFaulty && l.hasFlit && (
+                    <circle
+                      cx={(l.x1 + l.x2) / 2}
+                      cy={(l.y1 + l.y2) / 2}
+                      r={0.06}
+                      fill="#34d399"
+                      className="animate-pulse"
+                    />
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+
           {Array.from({ length: meshHeight }).map((_, y) =>
             Array.from({ length: meshWidth }).map((_, x) => {
               const id = y * meshWidth + x;
@@ -164,7 +306,9 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   ? 'TBP'
                   : 'LP';
 
-              const tileClasses = getTileStyle(router, occupancyPct);
+              const tileClasses = router.isFaulty
+                ? 'bg-red-950/90 border-red-500 text-red-200 [background-image:repeating-linear-gradient(135deg,rgba(239,68,68,0.18)_0px,rgba(239,68,68,0.18)_4px,transparent_4px,transparent_10px)]'
+                : getTileStyle(router, occupancyPct);
 
               return (
                 <div
@@ -180,9 +324,16 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
                   {/* Top Tile Coordinates and Mode */}
                   <div className="flex items-center justify-between text-[9px] font-mono font-bold leading-tight">
                     <span>R({x},{y})</span>
-                    <span className="text-[8px] px-1 py-0.2 rounded bg-black/40 border border-[var(--border-subtle)] uppercase">
-                      {modeTag}
-                    </span>
+                    {router.isFaulty ? (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-red-500/30 border border-red-400/60 uppercase flex items-center gap-0.5">
+                        <X className="w-2 h-2" />
+                        FAULT
+                      </span>
+                    ) : (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-black/40 border border-[var(--border-subtle)] uppercase">
+                        {modeTag}
+                      </span>
+                    )}
                   </div>
 
                   {/* Center Flit Count & Bar */}
@@ -239,6 +390,13 @@ export const MeshGrid: React.FC<MeshGridProps> = ({
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 bg-red-700 border border-red-500 rounded-sm"></span> HOT
+          </span>
+          <span className="flex items-center gap-1 border-l border-[var(--border-subtle)] pl-3">
+            <span className="w-2 h-2 rounded-sm bg-red-950 border border-red-500 [background-image:repeating-linear-gradient(135deg,rgba(239,68,68,0.4)_0px,rgba(239,68,68,0.4)_1px,transparent_1px,transparent_2px)]"></span>{' '}
+            FAULTY
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-0.5 bg-amber-500"></span> REROUTED
           </span>
         </div>
 

@@ -13,11 +13,25 @@ export type WorkloadType =
   | 'UNIFORM_RANDOM'
   | 'BIT_COMPLEMENT'
   | 'HOTSPOT_TRAFFIC'
+  | 'TRANSPOSE'
+  | 'BIT_REVERSAL'
   | 'RESNET18_TRACE'
   | 'BERT_TRACE'
   | 'GEMM_TRACE'
   | 'SPARSE_GEMM_TRACE'
   | 'CUSTOM_TRACE';
+
+/** The four standard synthetic traffic patterns exposed by the Configuration
+ * Panel's "Traffic Pattern" selector -- a small, canonical subset of the
+ * full WorkloadType list above (which also covers AI-specific traces). */
+export const STANDARD_TRAFFIC_PATTERNS: { id: WorkloadType; label: string }[] = [
+  { id: 'UNIFORM_RANDOM', label: 'Uniform Random' },
+  { id: 'HOTSPOT_TRAFFIC', label: 'Hotspot' },
+  { id: 'TRANSPOSE', label: 'Transpose' },
+  { id: 'BIT_REVERSAL', label: 'Bit-Reversal' },
+];
+
+export type FaultType = 'ROUTER_FAULT' | 'LINK_FAULT' | 'RANDOM_FAULT';
 
 /** Workload types that replay a recorded event schedule (from
  * research-engine/traces/*.csv, or a user-uploaded file for CUSTOM_TRACE)
@@ -49,6 +63,17 @@ export interface NoCConfig {
   powerGatingThreshold: number; // cycles of idle before power gating VC
   hysteresisWindows: number; // consecutive epochs a candidate mode must win before PROPOSED_RECONFIGURABLE applies it
   dwellCycles: number; // minimum cycles since the last actual reconfiguration before another is allowed
+
+  // Fault injection (Configuration Panel section 9 / academic project requirement)
+  faultInjectionEnabled: boolean;
+  faultRatePct: number; // 0, 5, 10, 15, 20
+  faultType: FaultType;
+
+  // Finite-run controls for the Architecture Comparison / benchmark runner
+  // (the free-running interactive mesh in the Simulator tab ignores these
+  // and just keeps ticking until paused).
+  targetPacketCount: number; // 1,000 - 100,000
+  simulationCycleLimit: number; // 1,000 - 100,000
 }
 
 export type FlitType = 'HEAD' | 'BODY' | 'TAIL' | 'SINGLE';
@@ -88,6 +113,7 @@ export interface RouterNode {
   y: number;
   id: number;
   currentMode: RoutingMode;
+  isFaulty: boolean;
   buffers: Map<string, RouterBuffer>; // key: `${port}_${vc}`
   activeFlitsInSwitch: Flit[];
   totalInjected: number;
@@ -131,6 +157,31 @@ export interface Link {
   busyCycles: number;
   totalTransversals: number;
   energyPJ: number;
+  isFaulty: boolean;
+}
+
+/** A moment where a fault-aware routing algorithm picked a link/port other
+ * than the one a fault-oblivious router would have used, because the
+ * "natural" choice led into a faulty router or link. Recorded as it
+ * genuinely happens during simulation (see routingAlgorithms.ts /
+ * nocEngine.ts) -- not synthesized after the fact. */
+export interface FaultAvoidanceEvent {
+  cycle: number;
+  atX: number;
+  atY: number;
+  chosenPort: PortDirection;
+  avoidedX: number;
+  avoidedY: number;
+  avoidedKind: 'ROUTER_FAULT' | 'LINK_FAULT';
+  wasDeflection: boolean; // true if it had to leave the minimal (shortest-path) direction entirely
+}
+
+export interface FaultSummary {
+  enabled: boolean;
+  faultType: FaultType;
+  faultRatePct: number;
+  faultyRouterIds: number[];
+  faultyLinkKeys: string[];
 }
 
 export interface WorkloadTelemetry {
@@ -153,6 +204,7 @@ export interface WorkloadTelemetry {
     avgBufferLoad: number;
     reason: string; // 'applied' | 'already_active' | 'hysteresis_wait(n/required)' | 'dwell_time_block' | 'static_policy'
   }[];
+  faultAvoidanceEvents: FaultAvoidanceEvent[];
 }
 
 export interface SimulationMetrics {
@@ -171,15 +223,18 @@ export interface SimulationMetrics {
   peakBufferOccupancyPct: number;
   totalEnergyPJ: number;
   energyPerFlitPJ: number;
-  energyDelayProduct: number; // Latency * Energy
+  energyDelayProduct: number; // Total Energy (pJ) * Average Latency (cycles) -- a SIMULATION ESTIMATE, not measured silicon power
   saturationDetected: boolean;
   saturationCycle: number | null;
+  packetDeliveryRatioPct: number; // delivered / injected packets, 100 when nothing injected yet
+  totalDroppedFlits: number; // flits dropped by the bounded-lifetime gridlock recovery timeout (see nocEngine.processFlitTimeouts)
   energyBreakdown: {
     staticLeakage: number;
     bufferDynamic: number;
     crossbarDynamic: number;
     linkDynamic: number;
     controllerDynamic: number;
+    reconfigurationDynamic: number;
   };
 }
 
@@ -193,6 +248,40 @@ export interface SweepPoint {
   energyPerFlitPJ: number;
   energyDelayProduct: number;
   isSaturated: boolean;
+  packetDeliveryRatioPct: number;
+}
+
+export interface FaultSweepPoint extends SweepPoint {
+  faultRatePct: number;
+}
+
+export interface FaultSweepData {
+  faultRates: number[];
+  faultType: FaultType;
+  results: {
+    BASELINE_XY: FaultSweepPoint[];
+    PROPOSED_RECONFIGURABLE: FaultSweepPoint[];
+  };
+}
+
+export interface ArchitectureRunResult {
+  metrics: SimulationMetrics;
+  telemetry: WorkloadTelemetry;
+  routers: SerializedRouterNode[];
+  links: Link[];
+}
+
+export interface ArchitectureComparisonResult {
+  config: NoCConfig;
+  faults: FaultSummary;
+  cyclesRun: number;
+  baseline: ArchitectureRunResult;
+  proposed: ArchitectureRunResult;
+  improvement: {
+    latencyPct: number; // (Baseline - Proposed) / Baseline * 100
+    throughputPct: number; // (Proposed - Baseline) / Baseline * 100
+    edpPct: number; // (Baseline - Proposed) / Baseline * 100
+  };
 }
 
 export interface BenchmarkComparisonData {
@@ -235,6 +324,7 @@ export interface SimulationSnapshot {
   routers: SerializedRouterNode[];
   links: Link[];
   config: NoCConfig;
+  faults: FaultSummary;
 }
 
 export type ClientCommand =
