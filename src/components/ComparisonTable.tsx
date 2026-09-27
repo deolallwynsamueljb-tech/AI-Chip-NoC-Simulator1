@@ -26,8 +26,11 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
     );
   }
 
-  const foundIdx = benchmarkData.injectionRates.findIndex((r) => r >= 0.35);
-  const targetIdx = foundIdx >= 0 ? foundIdx : Math.floor(benchmarkData.injectionRates.length / 2);
+  // Show the swept point closest to whatever injection rate is actually
+  // configured live, not a hardcoded rate -- otherwise this table silently
+  // ignores the user's own setting.
+  const foundIdx = benchmarkData.injectionRates.findIndex((r) => r >= config.injectionRate);
+  const targetIdx = foundIdx >= 0 ? foundIdx : benchmarkData.injectionRates.length - 1;
 
   const xy: SweepPoint | undefined = benchmarkData.results.BASELINE_XY[targetIdx];
   const adapt: SweepPoint | undefined = benchmarkData.results.ADAPTIVE_DYXY[targetIdx];

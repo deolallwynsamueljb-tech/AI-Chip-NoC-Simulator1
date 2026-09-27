@@ -196,11 +196,16 @@ export class SweepEngine {
       { id: 'UNIFORM_RANDOM', label: 'Uniform Random', desc: 'Uniform baseline traffic' },
     ];
 
+    // Evaluate at whatever injection rate is actually configured, not a
+    // hardcoded one -- this used to always compare at 0.35 regardless of
+    // what the user had set.
+    const rate = baseConfig.injectionRate;
+
     return workloads.map((w) => {
-      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', 0.35, 1500);
-      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', 0.35, 1500);
-      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', 0.35, 1500);
-      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', 0.35, 1500);
+      const ptXY = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'BASELINE_XY', rate, 1500);
+      const ptAdaptive = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'ADAPTIVE_DYXY', rate, 1500);
+      const ptRCA = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'CONGESTION_AWARE_RCA', rate, 1500);
+      const ptProposed = this.simulatePoint({ ...baseConfig, workloadType: w.id }, 'PROPOSED_RECONFIGURABLE', rate, 1500);
 
       const latencyReductionPct = ((ptXY.avgLatency - ptProposed.avgLatency) / Math.max(1, ptXY.avgLatency)) * 100;
       const throughputGainPct = ((ptProposed.throughput - ptXY.throughput) / Math.max(0.01, ptXY.throughput)) * 100;

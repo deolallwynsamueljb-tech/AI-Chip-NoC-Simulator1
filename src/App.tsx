@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: NoCConfig = {
   epochCycles: 25,
   routingMode: 'PROPOSED_RECONFIGURABLE',
   workloadType: 'CNN_LOCAL',
-  injectionRate: 0.25,
+  injectionRate: 0.2,
   packetLengthFlits: 4,
   powerGatingThreshold: 8,
   hysteresisWindows: 2,
