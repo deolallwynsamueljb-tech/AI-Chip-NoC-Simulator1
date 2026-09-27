@@ -68,12 +68,25 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
 
         {latDelta && tputDelta && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold text-[12px]">
+            <span
+              className={`px-2 py-0.5 rounded border font-mono font-bold text-[12px] ${
+                latDelta.isGood
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : 'bg-red-500/10 text-red-400 border-red-500/30'
+              }`}
+            >
               {latDelta.sign}
               {latDelta.pct}% latency
             </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[12px]">
-              +{tputDelta.pct}% throughput
+            <span
+              className={`px-2 py-0.5 rounded border font-mono font-bold text-[12px] ${
+                tputDelta.isGood
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-red-500/20 text-red-300 border-red-500/40'
+              }`}
+            >
+              {tputDelta.sign}
+              {tputDelta.pct}% throughput
             </span>
           </div>
         )}
@@ -106,7 +119,13 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ benchmarkData,
                   <div className="flex items-center justify-between gap-2">
                     <span>{fmt(prop?.[row.key] as number | undefined, row.digits, row.suffix)}</span>
                     {row.delta && (
-                      <span className="text-[11px] text-emerald-400 bg-emerald-500/20 px-1 py-0.2 rounded border border-emerald-500/40">
+                      <span
+                        className={`text-[11px] px-1 py-0.2 rounded border ${
+                          row.delta.isGood
+                            ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/40'
+                            : 'text-red-400 bg-red-500/20 border-red-500/40'
+                        }`}
+                      >
                         {row.delta.sign}
                         {row.delta.pct}%
                       </span>

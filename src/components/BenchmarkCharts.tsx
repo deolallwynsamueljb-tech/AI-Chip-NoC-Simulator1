@@ -227,10 +227,12 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
                 </div>
 
                 {insights.latencyGainPct !== null && (
-                  <div className="p-2 bg-[var(--bg-surface)] rounded border border-emerald-500/30">
-                    <div className="text-emerald-400 text-[11px] uppercase">Latency gain at high load ({insights.highLoadRate.toFixed(2)})</div>
-                    <div className="text-xs font-bold text-emerald-300 mt-0.5">
-                      {insights.latencyGainPct.toFixed(1)}% average latency reduction
+                  <div className={`p-2 bg-[var(--bg-surface)] rounded border ${insights.latencyGainPct >= 0 ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+                    <div className={`text-[11px] uppercase ${insights.latencyGainPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      Latency at high load ({insights.highLoadRate.toFixed(2)})
+                    </div>
+                    <div className={`text-xs font-bold mt-0.5 ${insights.latencyGainPct >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      {Math.abs(insights.latencyGainPct).toFixed(1)}% average latency {insights.latencyGainPct >= 0 ? 'reduction' : 'increase'}
                     </div>
                   </div>
                 )}
@@ -259,8 +261,15 @@ export const BenchmarkCharts: React.FC<BenchmarkChartsProps> = ({
                   <div key={item.workload} className="p-2 bg-[var(--bg-surface)] rounded border border-[var(--border-subtle)] flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-white">{item.workload}</span>
-                      <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                        -{item.latencyReductionPct.toFixed(1)}%
+                      <span
+                        className={`font-bold px-1.5 py-0.2 rounded border ${
+                          item.latencyReductionPct >= 0
+                            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                            : 'text-red-400 bg-red-500/10 border-red-500/30'
+                        }`}
+                      >
+                        {item.latencyReductionPct >= 0 ? '-' : '+'}
+                        {Math.abs(item.latencyReductionPct).toFixed(1)}%
                       </span>
                     </div>
                     <div className="text-slate-400 text-[11px] mt-2 flex justify-between">
